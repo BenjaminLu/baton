@@ -1,0 +1,4 @@
+.baton/
+baton-*.html
+*.pyc
+__pycache__/
