@@ -7,12 +7,12 @@ Cursor, anything — can load it and keep going.
 
 This file is the entry point for agents that read `AGENTS.md` (Codex and
 others). Claude Code users get the same thing as a plugin (`.claude-plugin/`)
-via the single `baton` skill (`/baton`). Either way the method is identical
+via the single `baton` skill (`/baton` as a personal skill, `/baton:baton` as a plugin). Either way the method is identical
 and lives in one place.
 
 ## One job, two decisions — what you are packaging and who reads it
 
-`skills/baton/SKILL.md` decides both from the evidence, never by asking:
+`SKILL.md` decides both from the evidence, never by asking:
 
 | input | reader | register |
 |---|---|---|
@@ -31,7 +31,7 @@ something that does not exist.
 
 ## The method
 `references/pipeline.md` is the full build. Read it, then
-`skills/baton/SKILL.md` for what differs by route. Diagram vocabulary is in
+`SKILL.md` for what differs by route. Diagram vocabulary is in
 `references/diagrams.md`; extraction rules in `references/extraction.md`.
 
 ## You do the work; two scripts do the assembly
@@ -51,7 +51,7 @@ next to this file and **locate their own siblings** (template, assets) via
 their file path, so they run from any working directory:
 
 ```bash
-BATON=/path/to/baton          # this directory (Claude Code: ${CLAUDE_PLUGIN_ROOT})
+BATON=/path/to/baton          # this directory (Claude Code: ${CLAUDE_SKILL_DIR}, or ${CLAUDE_PLUGIN_ROOT} when installed as a plugin)
 python3 "$BATON/scripts/render.py"   .baton/packet.json -o baton-<slug>.html
 python3 "$BATON/scripts/verify.py"   baton-<slug>.html --register <eli5|engineer>
 python3 "$BATON/scripts/snapshot.py" baton-<slug>.html -o <scratch-dir>
