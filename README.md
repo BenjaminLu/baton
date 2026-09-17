@@ -18,11 +18,17 @@ to pack it for someone who doesn't read code, or paste a PRD / spec / RFC /
 decision doc. `/baton` makes two decisions from what you ask — never by
 asking you to pick:
 
-| what is the input | who reads the page | what you get |
-|---|---|---|
-| work done in this session | an engineer who has forgotten — future you, or whoever inherits the branch | the change drawn per item, the paths tried and dropped, next steps |
-| work done in this session | a PM or exec asking "what can now go wrong for our users?" | the same work in plain words, risks only, each traceable |
-| a PRD, spec or decision doc | a team aligning on work not yet done | the argument as diagrams, marked *proposal* — never mistaken for shipped |
+**What is the input?**
+- **Work done in this session** — packaged as what happened: the change drawn
+  per item, the paths tried and dropped, next steps.
+- **A PRD, spec or decision doc** — work not yet done, rendered as the
+  argument in diagrams and marked *proposal*, never mistaken for shipped.
+
+**Who reads the page?**
+- **An engineer who has forgotten** — future you, or whoever inherits the
+  branch: identifiers, paths and code stay.
+- **Someone who does not read code** — a PM or exec asking "what can now go
+  wrong for our users?": plain words, risks only, each traceable.
 
 Any coding work qualifies — a merged feature, a debugging session, a
 refactor, an incident, a security fix, a local experiment with no branch. A
