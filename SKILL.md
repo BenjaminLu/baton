@@ -1,6 +1,6 @@
 ---
 name: baton
-description: Use when the user says "baton", "review this", "review where we are", "pack this up", "I'm stopping here", "hand this to future me", "save context before I switch", "write this up for my PM", "report this upward", "explain this to the boss", 向上報告, 總結這幾個 commit, or wants the state of any work handed on — a feature branch, a debugging session, an incident, an investigation, a refactor, a migration, a security fix, a local experiment with no branch. Also use when the user pastes or points at a PRD, spec, RFC, technical proposal, decision doc, 需求文档, 设计文档 or 决策文件 and wants it visualised, explained, or turned into something a team can align on. Replaces the former baton:review, baton:handoff and baton:brief.
+description: Use when the user says "baton", "review this", "review where we are", "pack this up", "I'm stopping here", "hand this to future me", "save context before I switch", "write this up for my PM", "report this upward", "explain this to the boss", 向上報告, 總結這幾個 commit, or wants the state of any work handed on — a feature branch, a debugging session, an incident, an investigation, a refactor, a migration, a security fix, a local experiment with no branch. Also use when the user pastes or points at a PRD, spec, RFC, technical proposal, decision doc, 需求文档, 设计文档 or 决策文件 and wants it visualised, explained, or turned into something a team can align on.
 ---
 
 # baton
@@ -71,7 +71,7 @@ every item gets its own small figure, not a prose list entry (pipeline §3,
 per-item rule). For a bugfix or fix series: one `vuln` card **per fix**, each
 with its own before/after severed-chain diagram, the fix's `file:line` in
 `ref`, and the mechanism named in the fix text (`diagrams.md` § Per-fix
-before/after). Generate the set from one layout function, never free-draw
+before / after). Generate the set from one layout function, never free-draw
 them one by one. A status page that never shows what was actually fixed
 reads as if nothing was.
 

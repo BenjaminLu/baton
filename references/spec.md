@@ -20,7 +20,7 @@ Path("packet.json").write_text(json.dumps(spec, ensure_ascii=False))
 | field | shape | notes |
 |---|---|---|
 | `format_version` | `"0.1"` | defaulted if omitted |
-| `layer` | `"L0" \| "L1" \| "L2"` | shown in the footer |
+| `layer` | `"L0" \| "L1" \| "L2" \| "proposal"` | shown in the footer; `"proposal"` is required when the input is a document about work not yet done (`SKILL.md`), never `L0`/`L1` |
 | `layer_note` | i18n | footer suffix, e.g. what was verified and when |
 | `filename` | slug | download name for the `.md`; also the default output name |
 | `repo` / `branch` / `range` | strings | joined with `·` into the eyebrow; omit any that don't apply |
