@@ -215,7 +215,7 @@ unit of work specifically — each commit, each bugfix, each migration step,
 each finding — a page of prose entries wastes what HTML can do that a commit
 log cannot. Give every named item its own small figure: the mechanism it
 changed, before → after, the chain it severed or the duplication it
-collapsed. review's per-fix `vuln` card is the proven instance (one card, one
+collapsed. The per-fix `vuln` card is the proven instance (one card, one
 severed-chain drawing per fix — a text-only list shipped once and was
 rejected by its reader); apply the same shape to any enumerable work, not
 only fixes. Generate the set from one layout function so ten small diagrams

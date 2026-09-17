@@ -7,29 +7,31 @@ Cursor, anything — can load it and keep going.
 
 This file is the entry point for agents that read `AGENTS.md` (Codex and
 others). Claude Code users get the same thing as a plugin (`.claude-plugin/`)
-via the `baton:review`, `baton:handoff` and `baton:brief` skills. Either way
-the method is identical and lives in one place.
+via the single `baton` skill (`/baton`). Either way the method is identical
+and lives in one place.
 
-## Three jobs — pick by what you are packaging and who reads it
+## One job, two decisions — what you are packaging and who reads it
 
-| | input | reader | file |
-|---|---|---|---|
-| **review** | work done in this session | an engineer who has forgotten — future you, or whoever inherits the branch | `skills/review/SKILL.md` |
-| **handoff** | work done in this session | a product manager or executive who will not open the repo | `skills/handoff/SKILL.md` |
-| **brief** | a document — PRD, spec, RFC, decision record | whoever needs to align on work **not yet done** | `skills/brief/SKILL.md` |
+`skills/baton/SKILL.md` decides both from the evidence, never by asking:
+
+| input | reader | register |
+|---|---|---|
+| work done in this session | an engineer who has forgotten — future you, or whoever inherits the branch | `engineer` |
+| work done in this session | a product manager or executive who will not open the repo | `eli5` |
+| a document — PRD, spec, RFC, decision record — about work **not yet done** | whoever needs to align on it | follows the document's own audience |
 
 **A git repo is not required.** The session is the floor — a debugging
 afternoon, a local experiment, an investigation with no commits all pack. Git,
 a pull request and design docs are enhancements you add when you find them.
 
-The split that matters: **review and handoff package what happened; brief
-renders what is proposed.** A brief must say *proposal* on its face — a reader
-who mistakes an intended flow for a shipped one plans against something that
-does not exist.
+The split that matters: **done work is packaged as what happened; a document
+is rendered as what is proposed.** A proposal must say *proposal* on its face
+— a reader who mistakes an intended flow for a shipped one plans against
+something that does not exist.
 
 ## The method
-`references/pipeline.md` is the full build, shared by all three. Read it, then
-the SKILL.md for the job you're doing. Diagram vocabulary is in
+`references/pipeline.md` is the full build. Read it, then
+`skills/baton/SKILL.md` for what differs by route. Diagram vocabulary is in
 `references/diagrams.md`; extraction rules in `references/extraction.md`.
 
 ## You do the work; two scripts do the assembly

@@ -11,18 +11,18 @@ working history — every path tried and dropped, every review round, the schema
 writes behind each state — packaged so a person skims it and their agent
 resumes from it.
 
-## Three skills
+## One skill: `/baton`
 
-| | packages | reads like |
-|---|---|---|
-| **`baton:review`** | this session's work | an engineer who has forgotten |
-| **`baton:handoff`** | this session's work | a PM or exec asking "what can now go wrong for our users?" |
-| **`baton:brief`** | a PRD, spec or decision doc | a team aligning on work not yet done — marked *proposal*, never mistaken for shipped |
+| packages | reads like |
+|---|---|
+| this session's work | an engineer who has forgotten |
+| this session's work | a PM or exec asking "what can now go wrong for our users?" |
+| a PRD, spec or decision doc | a team aligning on work not yet done — marked *proposal*, never mistaken for shipped |
 
-Claude picks the right one from what you ask; each has its own precise
-trigger. Any coding work qualifies — a merged feature, a debugging session, a
+`/baton` decides which row from what you ask — the input and the reader —
+and never asks you to pick. Any coding work qualifies — a merged feature, a debugging session, a
 refactor, an incident, a local experiment with no branch. A repo helps; it is
-not required. All three produce the same kind of page: an outline you walk, diagrams drawn by
+not required. Every route produces the same kind of page: an outline you walk, diagrams drawn by
 the `diagram-design` skill from the repo's own design docs and embedded as
 static inline SVG (architecture, an interactive state
 machine linked to the database write behind each state, sequence, the DB
@@ -50,11 +50,11 @@ claude --plugin-dir /path/to/baton
 
 ## Try it in two minutes — on a Pokémon dilemma
 
-No repo, no setup, and the data is fetched live. Ask `baton:brief` to settle
+No repo, no setup, and the data is fetched live. Ask `/baton` to settle
 gaming's most famous irreversible decision:
 
 ```
-claude "/baton:brief Which Eevee evolution should I commit to? Fetch the real
+claude "/baton Which Eevee evolution should I commit to? Fetch the real
 stats from PokeAPI, embed the sprites, and lay it out as a decision"
 ```
 
@@ -72,7 +72,7 @@ Point it at the famous "remove the GIL" proposal and ask for a page a
 product manager could read:
 
 ```
-claude "/baton:brief https://peps.python.org/pep-0703/ — make the free-threaded
+claude "/baton https://peps.python.org/pep-0703/ — make the free-threaded
 Python decision legible to someone who has never heard of the GIL"
 ```
 
@@ -83,10 +83,10 @@ whoever you send it to can paste the full context into their own Claude Code /
 Codex / Cursor and interrogate the proposal past what the page shows.
 
 Any RFC, PEP, KEP, TC39 proposal or design doc works the same way — they are
-all decision documents, which is exactly the shape `brief` reads. The other
-two entry points need no URL at all: after any real coding session, just say
-**"baton"** to pack it for an engineer, or **"write this up for my PM"** to
-pack it for someone who doesn't read code.
+all decision documents, which `/baton` recognises as a proposal. Done work
+needs no URL at all: after any real coding session, just say **"baton"** to
+pack it for an engineer, or **"write this up for my PM"** to pack it for
+someone who doesn't read code.
 
 ## Requirements
 Python 3 (standard library only), `git`, and `gh` for pull-request context

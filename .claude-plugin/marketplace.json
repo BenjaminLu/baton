@@ -7,7 +7,7 @@
     {
       "name": "baton",
       "source": "./",
-      "description": "Turn any piece of work \u2014 a feature, a debugging session, an incident, or a document about work not yet done \u2014 into one self-contained HTML page: diagrams a non-engineer reads in minutes, with the complete session context embedded so any coding agent can pick it up. Skills: baton:review, baton:handoff, baton:brief."
+      "description": "Turn any piece of work \u2014 a feature, a debugging session, an incident, or a document about work not yet done \u2014 into one self-contained HTML page: diagrams a non-engineer reads in minutes, with the complete session context embedded so any coding agent can pick it up. One skill, /baton, routes by input and reader."
     }
   ],
   "description": "baton \u2014 pass the working context, not a summary"

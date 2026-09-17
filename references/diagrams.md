@@ -18,9 +18,10 @@ diagram you derived is worth far more than a page of prose; the failure to
 avoid is not an imperfect diagram, it is no diagram. Say what it is based on
 and where you were unsure.
 
-**Every entry point draws.** `baton:review`, `baton:handoff` and
-`baton:brief` all produce diagrams — what differs is the audience and which
-kinds earn their place, never whether to draw. A packet of prose is the thing
+**Every route draws.** Done work for an engineer, done work for someone who
+does not read code, a document about work not yet done — all produce
+diagrams; what differs is the audience and which kinds earn their place,
+never whether to draw. A packet of prose is the thing
 this format exists to replace.
 
 **The drawing itself goes through the `diagram-design` skill.** Invoke it — do
