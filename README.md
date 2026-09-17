@@ -13,22 +13,27 @@ resumes from it.
 
 ## One skill: `/baton`
 
-| packages | reads like |
-|---|---|
-| this session's work | an engineer who has forgotten |
-| this session's work | a PM or exec asking "what can now go wrong for our users?" |
-| a PRD, spec or decision doc | a team aligning on work not yet done — marked *proposal*, never mistaken for shipped |
+Say **"baton"** after any real coding session, **"write this up for my PM"**
+to pack it for someone who doesn't read code, or paste a PRD / spec / RFC /
+decision doc. `/baton` makes two decisions from what you ask — never by
+asking you to pick:
 
-`/baton` decides which row from what you ask — the input and the reader —
-and never asks you to pick. Any coding work qualifies — a merged feature, a debugging session, a
-refactor, an incident, a local experiment with no branch. A repo helps; it is
-not required. Every route produces the same kind of page: an outline you walk, diagrams drawn by
-the `diagram-design` skill from the repo's own design docs and embedded as
-static inline SVG (architecture, an interactive state
-machine linked to the database write behind each state, sequence, the DB
-lifecycle as transactions, before/after, attack-path for a security fix), a
-three-language switch (EN / 繁 / 简), and a one-click **copy the context to
-your AI**. It works offline and inside a sandboxed iframe.
+| what is the input | who reads the page | what you get |
+|---|---|---|
+| work done in this session | an engineer who has forgotten — future you, or whoever inherits the branch | the change drawn per item, the paths tried and dropped, next steps |
+| work done in this session | a PM or exec asking "what can now go wrong for our users?" | the same work in plain words, risks only, each traceable |
+| a PRD, spec or decision doc | a team aligning on work not yet done | the argument as diagrams, marked *proposal* — never mistaken for shipped |
+
+Any coding work qualifies — a merged feature, a debugging session, a
+refactor, an incident, a security fix, a local experiment with no branch. A
+repo helps; it is not required. Every route produces the same kind of page:
+an outline you walk, diagrams drawn by the `diagram-design` skill from the
+repo's own design docs and embedded as static inline SVG (architecture, an
+interactive state machine linked to the database write behind each state,
+sequence, the DB lifecycle as transactions, before/after, attack-path for a
+security fix), a three-language switch (EN / 繁 / 简), and a one-click
+**copy the context to your AI**. It works offline and inside a sandboxed
+iframe.
 
 ## Install
 
@@ -86,20 +91,26 @@ someone who doesn't read code.
 
 ## Requirements
 Python 3 (standard library only), `git`, and `gh` for pull-request context
-(optional — degrades gracefully). Diagrams are static inline SVG drawn by the
-`diagram-design` skill — no runtime diagram library, no network at view time.
+(optional — degrades gracefully). Two other skills do the parts baton does
+not: `diagram-design` draws every diagram as static inline SVG — no runtime
+diagram library, no network at view time — and `eli5` rewrites the page for
+a reader who does not read code.
 
 ## How it's built
-`references/pipeline.md` is the whole method; `references/diagrams.md` the
-diagram vocabulary; `templates/packet.html` the page. The agent does the
-extraction itself — `gh` for the pull request, `git merge-base` for the
-boundary, reading for the design docs and migrations, its own session for the
-history — and invokes the `diagram-design` skill to draw, embedding the
-extracted SVG. `scripts/` holds the only two scripts: `render.py`, which
-assembles the packet spec into the single HTML file (filling the template and
-escaping the payloads), and `verify.py`, which scans for
-mechanical absences (the context's refusal declaration, a digest-thin
-context, the register). Diagram correctness is checked by eye in a real
-browser — that is the gate.
+This repository *is* the skill directory: `SKILL.md` at the root decides the
+route and carries the rules that differ by route; `references/pipeline.md`
+is the whole method; `references/diagrams.md` the diagram vocabulary;
+`references/spec.md` the packet spec; `templates/packet.html` the page. The
+agent does the extraction itself — `gh` for the pull request, `git
+merge-base` for the boundary, reading for the design docs and migrations,
+its own session for the history — and invokes the `diagram-design` skill to
+draw, embedding the extracted SVG. `scripts/` holds the only three scripts,
+all mechanical on purpose: `render.py` assembles the packet spec into the
+single HTML file (filling the template and escaping the payloads);
+`verify.py` scans for mechanical absences (the context's refusal
+declaration, a digest-thin context, the register); `snapshot.py` renders the
+page headless, fails on mechanical diagram defects, and emits screenshots.
+Diagram correctness is then checked by eye in a real browser — that is the
+gate.
 
 MIT.
