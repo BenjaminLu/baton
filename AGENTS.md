@@ -14,11 +14,16 @@ method is identical and lives in one place.
 
 `SKILL.md` decides both from the evidence, never by asking:
 
-| input | reader | register |
-|---|---|---|
-| work done in this session | an engineer who has forgotten — future you, or whoever inherits the branch | `engineer` |
-| work done in this session | a product manager or executive who will not open the repo | `eli5` |
-| a document — PRD, spec, RFC, decision record — about work **not yet done** | whoever needs to align on it | follows the document's own audience |
+**What is the input?**
+- **Work done in this session** — packaged as what happened.
+- **A document** — PRD, spec, RFC, decision record — about work **not yet
+  done**, rendered as what is proposed.
+
+**Who reads the page?**
+- **An engineer who has forgotten** — future you, or whoever inherits the
+  branch. Register `engineer`.
+- **A product manager or executive who will not open the repo.** Register
+  `eli5`. For a document, the register follows the document's own audience.
 
 **A git repo is not required.** The session is the floor — a debugging
 afternoon, a local experiment, an investigation with no commits all pack. Git,
