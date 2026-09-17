@@ -30,6 +30,10 @@ document carries diagrams, reuse their structure; if it does not, draw from
 what it describes and say the drawing is your reading of it. The one thing
 never to ship is no diagram at all.
 
+When the document — or the ask — enumerates items (each requirement, each
+decision, each fix), every item gets its own small drawing, not a prose list
+entry (pipeline §3, per-item rule).
+
 ## First: read the document and decide what it is
 
 The kind decides the diagrams. Read it, then pick:

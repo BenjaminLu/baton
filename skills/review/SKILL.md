@@ -43,7 +43,10 @@ it is why this skill exists.
    for a bugfix or fix series, one `vuln` card **per fix**, each with its own
    before/after severed-chain diagram, the fix's `file:line` in `ref`, and
    the mechanism named in the fix text (`diagrams.md` § Per-fix before/after;
-   generate the SVGs from one layout function, never free-draw a set). A
+   generate the SVGs from one layout function, never free-draw a set). The
+   same per-item rule holds beyond fixes: an ask to explain each commit,
+   each workstream, or each migration step gets one small figure per item
+   (pipeline §3), prose demoted to captions. A
    status page that never shows what was actually fixed reads as if nothing
    was — this shipped once, and a text-only list was rejected next: the
    reader wanted to *see* where each chain breaks. Then the diagrams — from a

@@ -47,6 +47,9 @@ Change is your unit; risk is theirs.
      and fallbacks kept, labels reworded
    - *What to watch* — risks only, each traceable; an empty list is a
      finding, an invented one is a lie
+   - *Each piece, drawn* — when the ask is item-by-item (each commit, each
+     fix, each workstream), one small figure per item (pipeline §3, per-item
+     rule); a prose list wastes the page
 5. **Verify** — `verify.py --register eli5`; fix by finding a real word,
    never by deleting the sentence. Then the real-browser check, pipeline §6
    — non-skippable; a packet once shipped on script checks alone was

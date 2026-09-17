@@ -210,6 +210,20 @@ Drift is also yours to check: read the doc's states and the code's states and
 compare. A documented state the code no longer accepts — or the reverse — is
 a finding for the packet, not something to silently paper over.
 
+**Per-item work gets per-item drawings.** When the ask is to explain each
+unit of work specifically — each commit, each bugfix, each migration step,
+each finding — a page of prose entries wastes what HTML can do that a commit
+log cannot. Give every named item its own small figure: the mechanism it
+changed, before → after, the chain it severed or the duplication it
+collapsed. review's per-fix `vuln` card is the proven instance (one card, one
+severed-chain drawing per fix — a text-only list shipped once and was
+rejected by its reader); apply the same shape to any enumerable work, not
+only fixes. Generate the set from one layout function so ten small diagrams
+stay one visual system, and keep prose to captions and connective tissue.
+`stats`/`bars` blocks are the floor for an item whose story genuinely is one
+number; they never substitute for the mechanism drawing when there is a
+mechanism to draw.
+
 **The drawing itself goes through the `diagram-design` skill** — never
 hand-written SVG, never mermaid in the packet. It carries forty diagram
 types, semantic-pattern routing, a 4px grid, connector rules and a
