@@ -32,23 +32,14 @@ your AI**. It works offline and inside a sandboxed iframe.
 
 ## Install
 
-**Claude Code, as `/baton`** — clone it and link it in as a personal skill:
+**Claude Code** — clone it and link it in as a personal skill; the command is
+`/baton`:
 ```
 git clone https://github.com/BenjaminLu/baton ~/.claude/baton
 ln -s ~/.claude/baton ~/.claude/skills/baton
 ```
 To update later: `git -C ~/.claude/baton pull`. Skills load at session
 start, so open a new session after installing.
-
-**Claude Code, as a plugin** — two commands, and the skill is namespaced as
-`/baton:baton` (Claude Code always prefixes plugin skills):
-```
-claude plugin marketplace add BenjaminLu/baton
-claude plugin install baton
-```
-(or the same via `/plugin marketplace add` and `/plugin install` inside a
-session). To update later: `claude plugin update baton`. For local
-development, point at a clone instead: `claude --plugin-dir /path/to/baton`.
 
 **Codex, Cursor, and other agents** — clone the repo and point your agent at
 `AGENTS.md`; it carries the same workflow and script paths.

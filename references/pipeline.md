@@ -25,8 +25,7 @@ layers (§2), never a digest.
 Only three scripts exist, and all are mechanical on purpose: `render.py`
 (assembly), `verify.py` (register/absence scan), `snapshot.py` (headless
 screenshots + the mechanical diagram checks). `$BATON` is
-baton's install directory — in Claude Code `BATON="${CLAUDE_SKILL_DIR}"`
-(`"${CLAUDE_PLUGIN_ROOT}"` when installed as a plugin),
+baton's install directory — in Claude Code `BATON="${CLAUDE_SKILL_DIR}"`,
 otherwise the path baton was cloned to. Everything else in this pipeline is
 you, with `git`, `gh`, `find`, and your own judgment.
 

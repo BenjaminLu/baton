@@ -6,9 +6,9 @@ context** embedded so the reader's own coding agent — Claude Code, Codex,
 Cursor, anything — can load it and keep going.
 
 This file is the entry point for agents that read `AGENTS.md` (Codex and
-others). Claude Code users get the same thing as a plugin (`.claude-plugin/`)
-via the single `baton` skill (`/baton` as a personal skill, `/baton:baton` as a plugin). Either way the method is identical
-and lives in one place.
+others). Claude Code users get the same thing as the personal skill `/baton`
+(this directory symlinked into `~/.claude/skills/baton`). Either way the
+method is identical and lives in one place.
 
 ## One job, two decisions — what you are packaging and who reads it
 
@@ -51,7 +51,7 @@ next to this file and **locate their own siblings** (template, assets) via
 their file path, so they run from any working directory:
 
 ```bash
-BATON=/path/to/baton          # this directory (Claude Code: ${CLAUDE_SKILL_DIR}, or ${CLAUDE_PLUGIN_ROOT} when installed as a plugin)
+BATON=/path/to/baton          # this directory (Claude Code: ${CLAUDE_SKILL_DIR})
 python3 "$BATON/scripts/render.py"   .baton/packet.json -o baton-<slug>.html
 python3 "$BATON/scripts/verify.py"   baton-<slug>.html --register <eli5|engineer>
 python3 "$BATON/scripts/snapshot.py" baton-<slug>.html -o <scratch-dir>
