@@ -336,6 +336,21 @@ button.act:disabled{opacity:.4;cursor:default}
   text-transform:uppercase;color:var(--accent);font-weight:700;margin-bottom:.35rem}
 .handoff p{margin:0;font-size:.9rem;color:var(--muted);line-height:1.55}
 .handoff .row{display:flex;gap:.4rem;flex-wrap:wrap;flex:0 0 auto}
+/* Print / Save-as-PDF: same palette (exact colours), every step visible, chrome off. */
+@media print{
+  .rail,.langs,.nav,.handoff,.foot button,#theme{display:none!important}
+  .step{display:block!important;page-break-after:always;break-after:page;animation:none!important}
+  .step:last-of-type{page-break-after:auto;break-after:auto}
+  .figbody svg path[data-edge]{stroke-dasharray:none!important;stroke-dashoffset:0!important;animation:none!important}
+  .figbody svg rect[data-node]{opacity:1!important;animation:none!important}
+  body{background:var(--bg)!important}
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+body.baton-printing .rail,
+body.baton-printing .langs,
+body.baton-printing .nav,
+body.baton-printing .handoff{display:none!important}
+body.baton-printing .step{display:block!important;animation:none!important;margin-bottom:2rem}
 button.act.primary{background:var(--fg);color:var(--bg);border-color:var(--fg);font-weight:500}
 button.act.primary:hover{border-color:var(--fg);opacity:.88}
 button.act.primary.done{background:var(--accent);border-color:var(--accent);color:#fff}
@@ -400,6 +415,7 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
           <button class="act primary" id="cp"></button>
           <button class="act" id="raw"></button>
           <button class="act" id="dl"></button>
+          <button class="act" id="pdf" type="button" title="Print / Save as PDF (current language)"></button>
         </div>
       </div>
     </section>
@@ -434,21 +450,21 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
     en:{outline:'Contents',prev:'← Back',next:'Next →',of:(a,b)=>a+' of '+b,smapHint:'Click a state to see the database write behind it.',smapEmpty:'Click a state above.',
         hocap:'Hand off',
         hohelp:'The full working history travels with this page. Give it to your own coding agent and keep asking.',
-        cp:'Copy for your AI',copied:'Copied',raw:'View',dl:'.md',
+        cp:'Copy for your AI',copied:'Copied',raw:'View',dl:'.md',pdf:'PDF',
         rawtitle:'Context packet',
         rawhelp:'Already selected — press ⌘C / Ctrl+C, then paste into Claude Code, Codex, Cursor, or any coding agent.',
         lg:['This change','Needs attention','Cannot be undone','Nearby, unchanged']},
     hant:{outline:'目錄',prev:'← 上一步',next:'下一步 →',of:(a,b)=>a+' / '+b,smapHint:'點一個狀態，看它背後的資料庫寫入。',smapEmpty:'點上面的狀態。',
         hocap:'交棒',
         hohelp:'完整的工作歷程就在這一頁裡。交給你自己的 coding agent，可以繼續往下問。',
-        cp:'複製給你的 AI',copied:'已複製',raw:'看原文',dl:'.md',
+        cp:'複製給你的 AI',copied:'已複製',raw:'看原文',dl:'.md',pdf:'PDF',
         rawtitle:'Context packet',
         rawhelp:'已經選好了 —— 按 ⌘C / Ctrl+C，貼進 Claude Code、Codex、Cursor 或任何 coding agent。',
         lg:['這次動到的','要注意','回不去','周邊，沒動']},
     hans:{outline:'目录',prev:'← 上一步',next:'下一步 →',of:(a,b)=>a+' / '+b,smapHint:'点一个状态，看它背后的数据库写入。',smapEmpty:'点上面的状态。',
         hocap:'交棒',
         hohelp:'完整的工作历程就在这一页里。交给你自己的 coding agent，可以继续往下问。',
-        cp:'复制给你的 AI',copied:'已复制',raw:'看原文',dl:'.md',
+        cp:'复制给你的 AI',copied:'已复制',raw:'看原文',dl:'.md',pdf:'PDF',
         rawtitle:'Context packet',
         rawhelp:'已经选好了 —— 按 ⌘C / Ctrl+C，贴进 Claude Code、Codex、Cursor 或任何 coding agent。',
         lg:['这次动到的','要注意','回不去','周边，没动']}
@@ -684,6 +700,7 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
     document.getElementById('cp').textContent=t.cp;
     document.getElementById('raw').textContent=t.raw;
     document.getElementById('dl').textContent=t.dl;
+    document.getElementById('pdf').textContent=t.pdf;
     document.getElementById('rawtitle').textContent=t.rawtitle;
     document.getElementById('rawhelp').textContent=t.rawhelp;
     document.getElementById('prev').textContent=t.prev;
@@ -817,6 +834,21 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
     const a=document.createElement('a');
     a.href=URL.createObjectURL(new Blob([CTX],{type:'text/markdown'}));
     a.download=D.filename+'.md'; a.click(); URL.revokeObjectURL(a.href);
+  });
+  // Same HTML the reader sees — expand steps, keep colours, open the system
+  // print dialog (Save as PDF). Agents that need a file use scripts/export_pdf.py.
+  document.getElementById('pdf').addEventListener('click',()=>{
+    const restore=document.documentElement.getAttribute('data-theme');
+    document.body.classList.add('baton-printing');
+    document.documentElement.setAttribute('data-theme','light');
+    const done=()=>{
+      document.body.classList.remove('baton-printing');
+      if(restore) document.documentElement.setAttribute('data-theme',restore);
+      else document.documentElement.removeAttribute('data-theme');
+      removeEventListener('afterprint', done);
+    };
+    addEventListener('afterprint', done);
+    setTimeout(()=>window.print(), 50);
   });
 
   // ---- diagrams are inline SVG from the diagram-design skill: static markup,

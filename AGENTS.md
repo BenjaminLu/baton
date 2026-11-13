@@ -73,6 +73,16 @@ checked by eye on those screenshots or in a live browser. The packet spec's
 exact shape is `references/spec.md` — never reverse-engineered from the
 template.
 
+**Optional PDF** (does not run in the default build — same HTML, same CSS/SVG,
+so colours and layout match the page):
+
+```bash
+python3 "$BATON/scripts/export_pdf.py" baton-<slug>.html --lang hant -o baton-<slug>-hant.pdf
+```
+
+Readers can also use the page’s **PDF** button (current language → system
+print / Save as PDF). Do not invent a second template or a PPT path for this.
+
 Requirements: Python 3 (standard library only), `git`, and `gh` for pull-request
 context (degrades gracefully without it). Diagrams are static inline SVG
 drawn by the `diagram-design` skill — no runtime diagram library in the page,

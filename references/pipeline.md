@@ -22,9 +22,12 @@ register and the context's presence, a real browser checks the diagrams (§6).
 **The embedded context** is for their agent, indefinitely — complete, in three
 layers (§2), never a digest.
 
-Only three scripts exist, and all are mechanical on purpose: `render.py`
+Only three scripts exist in the default build, and all are mechanical on
+purpose: `render.py`
 (assembly), `verify.py` (register/absence scan), `snapshot.py` (headless
-screenshots + the mechanical diagram checks). `$BATON` is
+screenshots + the mechanical diagram checks). An optional fourth,
+`export_pdf.py`, prints the same HTML to a language-specific PDF when a
+handout is needed — never part of the default run. `$BATON` is
 baton's install directory — in Claude Code `BATON="${CLAUDE_SKILL_DIR}"`,
 otherwise the path baton was cloned to. Everything else in this pipeline is
 you, with `git`, `gh`, `find`, and your own judgment.
@@ -383,3 +386,16 @@ files stay in the scratch directory and the URL is the deliverable. Then
 publish with the **Artifact** tool and hand back the URL. That URL is what gets pasted
 into Slack; the reader installs nothing, and the local file and the published
 page behave identically, packet included.
+
+**Optional PDF handout** — only when the reader asked for a PDF, or a file is
+clearly needed for email / print. Never part of the default build (keeps
+packet runs short). Print the **same** HTML so layout and colours stay
+identical; do not redraw, do not build a PPT.
+
+```bash
+python3 "$BATON/scripts/export_pdf.py" baton-<slug>.html --lang hant -o baton-<slug>-hant.pdf
+```
+
+`--lang` is `en` | `hant` | `hans`. Default theme is light (formal handout).
+The page also has a **PDF** button that opens the system print dialog for the
+current language.

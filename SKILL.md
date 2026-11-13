@@ -172,7 +172,9 @@ then how to pull more: the specs it cites, the code that would implement it.
    §6 — non-skippable; a packet once shipped on script checks alone was
    completely broken.
 6. **Publish** — `Artifact` if a URL is wanted; otherwise the file beside the
-   work is the deliverable.
+   work is the deliverable. **PDF only on request** (or when a file handout is
+   clearly needed): `python3 "$BATON/scripts/export_pdf.py" baton-<slug>.html
+   --lang hant` — same page, same colours; never a second template, never PPT.
 
 ## When not to run
 

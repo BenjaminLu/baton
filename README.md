@@ -110,13 +110,14 @@ is the whole method; `references/diagrams.md` the diagram vocabulary;
 agent does the extraction itself — `gh` for the pull request, `git
 merge-base` for the boundary, reading for the design docs and migrations,
 its own session for the history — and invokes the `diagram-design` skill to
-draw, embedding the extracted SVG. `scripts/` holds the only three scripts,
-all mechanical on purpose: `render.py` assembles the packet spec into the
+draw, embedding the extracted SVG. `scripts/` holds the mechanical scripts:
+`render.py` assembles the packet spec into the
 single HTML file (filling the template and escaping the payloads);
 `verify.py` scans for mechanical absences (the context's refusal
 declaration, a digest-thin context, the register); `snapshot.py` renders the
-page headless, fails on mechanical diagram defects, and emits screenshots.
-Diagram correctness is then checked by eye in a real browser — that is the
-gate.
+page headless, fails on mechanical diagram defects, and emits screenshots;
+optional `export_pdf.py` prints that same HTML to a language-specific PDF
+(not part of the default build). Diagram correctness is then checked by eye
+in a real browser — that is the gate.
 
 MIT.
