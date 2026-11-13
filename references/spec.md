@@ -105,7 +105,14 @@ for other finding types.
 Interactive state machine, vulnerability card, and transaction envelope —
 shapes in `diagrams.md` (statemap) and the template's `vulnHTML`/`txnHTML`:
 
-- `vuln`: `severity` (`p0|p1|p2`), optional `svg`, `problem`, `fix`, `ref`.
+- `vuln`: `severity` (`p0|p1|p2`), `before`, `after`, optional `svg`,
+  `problem`, `fix`, `ref`. **`before` / `after` are required** (i18n): what the
+  system observably did, and what it observably does now — the new value,
+  error, state or call, with a `code` term, a number or a quoted value in it.
+  AFTER is never "no longer X" (`diagrams.md` § Per-change before / after);
+  `verify.py` fails the page otherwise. Draw `svg` with
+  `scripts/figures.py` `before_after()`; a hand-drawn figure must carry
+  `data-node="before-outcome"` and `data-node="after-outcome"` boxes.
 - `txn`: `method`, `summary`, `text`, `tables:[{table, op:"INSERT"|"UPDATE",
   guard?, fields:[{k, now, was?, tone?, why?}]}]`, `outside:[[name, i18n]]`,
   `takeaway`, `foot`.

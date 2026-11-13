@@ -217,12 +217,14 @@ a finding for the packet, not something to silently paper over.
 unit of work specifically — each commit, each bugfix, each migration step,
 each finding — a page of prose entries wastes what HTML can do that a commit
 log cannot. Give every named item its own small figure: the mechanism it
-changed, before → after, the chain it severed or the duplication it
-collapsed. The per-fix `vuln` card is the proven instance (one card, one
-severed-chain drawing per fix — a text-only list shipped once and was
-rejected by its reader); apply the same shape to any enumerable work, not
-only fixes. Generate the set from one layout function so ten small diagrams
-stay one visual system, and keep prose to captions and connective tissue.
+changed, what it did before and what it does now. The per-change `vuln`
+card is the proven instance (one card, one `figures.before_after()` drawing
+per change — a text-only list shipped once and was rejected by its reader;
+cards whose AFTER only said "no longer X" were rejected three times); apply
+the same shape to any enumerable work, not only fixes. AFTER is the new
+behaviour, stated concretely — `diagrams.md` § Per-change before / after.
+Generate the set from one layout function so ten small diagrams stay one
+visual system, and keep prose to captions and connective tissue.
 `stats`/`bars` blocks are the floor for an item whose story genuinely is one
 number; they never substitute for the mechanism drawing when there is a
 mechanism to draw.
@@ -338,7 +340,9 @@ python3 "$BATON/scripts/verify.py" baton-<slug>.html --register <eli5|engineer>
 `verify.py` is light on purpose: it scans, it does not judge. It catches the
 absences a reading agent is bad at noticing — the refusal declaration dropped
 from the embedded context, a context short enough to be a digest (§2's
-failure), and under `--register eli5` an identifier sitting bare in a human
+failure), a change card whose AFTER is missing, vague or only the negation of
+its BEFORE (the before/after gate, `diagrams.md` § Per-change before / after),
+and under `--register eli5` an identifier sitting bare in a human
 sentence (points, ledes, transaction text). It skips diagram markup
 entirely: its structure came from a source you read, and scanning it with the
 prose-register check would reject every correct diagram ever drawn.

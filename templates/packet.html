@@ -488,7 +488,9 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
     // severity chip and the diagram now live outside this box (built once);
     // this rebuilds only the language-dependent text.
     let h='<dl class="vuln-pf">';
-    h+='<dt class="prob">'+(lang==='en'?'the problem':(lang==='hant'?'漏洞':'漏洞'))+'</dt><dd>'+P(s.problem)+'</dd>';
+    if(s.before) h+='<dt class="prob">'+(lang==='en'?'before':'改動前')+'</dt><dd>'+P(s.before)+'</dd>';
+    if(s.after) h+='<dt class="fix">'+(lang==='en'?'after':'改動後')+'</dt><dd>'+P(s.after)+'</dd>';
+    h+='<dt class="prob">'+(lang==='en'?'the problem':(lang==='hant'?'問題':'问题'))+'</dt><dd>'+P(s.problem)+'</dd>';
     h+='<dt class="fix">'+(lang==='en'?'the fix':(lang==='hant'?'修法':'修法'))+'</dt><dd>'+P(s.fix)+'</dd>';
     h+='</dl>';
     if(s.ref) h+='<div class="vuln-ref">'+rich(pick(s.ref,lang))+'</div>';

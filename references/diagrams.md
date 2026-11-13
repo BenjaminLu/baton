@@ -252,45 +252,62 @@ A monochrome diagram makes the reader do with position what color could have
 told them at a glance; a decorative rainbow is worse, because color that
 means nothing teaches the reader to ignore the color that does.
 
-## Per-fix before / after: one severed chain per bug
+## Per-change before / after: what it did, what it does now
 
-For a fix series — a security hardening, a bug-sweep branch — a list that
-*names* the fixes is not enough: a reader asked for exactly this once, having
-been given the list. **Every fix gets its own `vuln` card, and every card
-gets its own before/after diagram.** The card answers three questions the
-reader actually has: what could happen (the chain), *where* the fix sits (the
-`ref` line: sub-PR + `file:line`), and *why* it works (the mechanism, named).
+For a fix series — a security hardening, a bug-sweep branch, any PR that
+changes behaviour — a list that *names* the changes is not enough: a reader
+asked for exactly this once, having been given the list. **Every change gets
+its own `vuln` card, and every card gets its own before/after diagram.** The
+card answers four questions the reader actually has: what the system **did**,
+what it **does now**, *where* the change sits (the `ref` line: sub-PR +
+`file:line`), and *why* the new behaviour follows (the mechanism, named).
+
+**The rule this section exists for: AFTER states the new behaviour, never the
+absence of the old one.** "No longer diluted", "不再被稀釋", "✗ blocked", a
+struck-through copy of the BEFORE box — every one of these was shipped, and
+every one told the reader nothing the card title had not already said. The
+reader wants the new value, the new error, the new state, the new call: "0.89%
+→ 2.68%: unobserved validator gets weight 0", "2nd REQUEST at N+1 → 4017, zero
+writes", "returns `HTTP 429 (offset=500)`; run stops, pages k+1…N wait 24h". If
+the change has a cost or a residue, AFTER says that too — an AFTER that hides
+a regression is worse than one that is lazy.
 
 The card's `ref` line is **clickable**: the sub-PR number links to its PR
 page and the fix's `file:line` links to the GitHub blob at a pinned commit
 SHA — the identifier itself is the link, nothing visual is added (mechanics
 and the line-relocation rule: `spec.md` § Code links).
 
-The diagram is one SVG, two rows, same geometry for every fix:
+The diagram is one SVG, two rows, same geometry for every change — **draw it
+with `scripts/figures.py` `before_after()`**, which refuses a lazy AFTER:
 
-- **BEFORE row:** source → vulnerable component → impact. Three boxes, left
-  to right. The impact box takes `--seal` and the edge into it `--seal` —
-  the chain visibly completes.
-- **AFTER row:** the same three boxes; the fix lives *on the component*
-  (`--accent` stroke, `--accent-tint` fill — this is the change), its
-  sublabel is the mechanism itself (`ENV == "development"`, `esc() at all 47
-  builders`, `safefetch.Client, checked at dial` — the proper noun, not a
-  euphemism). The edge to the impact is dashed, carries a small "✗ blocked"
-  label, and never reaches: the impact box is dashed `--muted` with dimmed
-  text — no longer reachable.
+- **BEFORE row:** trigger → component as it was (sublabel: the old mechanism,
+  `return nil, 0, err  // err==nil`) → **before outcome**, what observably
+  happened. `--seal` if it cannot be undone, else `--amber`.
+- **AFTER row:** the same trigger → component as it is now (`--accent`; the
+  sublabel is the new mechanism itself — `fmt.Errorf("…HTTP %d…")`,
+  `window ∩ [activation, exit)`, the proper noun, not a euphemism) → **after
+  outcome**, a live `--ok` box stating what observably happens now. Never
+  dashed, never dimmed, never ✗.
 
-The "why it fixes" sentence goes in the card's `fix` text and must name the
-mechanism and the reason it closes the class (fail-closed vs fail-open, type
-enforcement, checked-at-dial), not just restate that it is fixed.
+The card's `before` / `after` fields carry the same two outcomes as sentences
+(spec.md § vuln); `problem` / `fix` keep the why and the mechanism. The "why
+it works" sentence in `fix` must name the mechanism and the reason it closes
+the class (fail-closed vs fail-open, type enforcement, checked-at-dial), not
+restate that it is fixed.
 
-**Generate these, do not free-draw them.** Thirteen hand-drawn diagrams
-drift in geometry and each becomes its own overflow risk; one layout function
-taking `{source, component, impact, fix mechanism}` per finding emits all of
-them with identical spacing, and `snapshot.py`'s per-language overflow check
+**The gate.** `verify.py` fails the page when a change card has no `before` /
+`after`, when AFTER equals BEFORE or is BEFORE plus a negation, when AFTER
+names nothing concrete (no `code` term, number or quoted value), or when the
+figure lacks `data-node="before-outcome"` / `"after-outcome"` boxes or draws
+the AFTER outcome struck through. Fix it by writing what happens now — never
+by rewording the negation until the checker stops noticing.
+
+**Generate these, do not free-draw them.** One layout function emits every
+card with identical spacing, and `snapshot.py`'s per-language overflow check
 then validates every label in every language mechanically. Node widths are
-fixed, so write labels to fit: names ≤ 16 CJK glyphs / ≤ 33 latin characters
-at 13px, sublabels latin-only mono ≤ 37 characters. Severity maps to the
-card chip: critical → `p0`, major → `p1`, minor → `p2`.
+fixed, so write labels to fit: names ≤ 16 CJK glyphs / ≤ 30 latin characters
+at 13px, sublabels latin-only mono ≤ 30 characters. Severity maps to the card
+chip: critical → `p0`, major → `p1`, minor → `p2`.
 
 ## The database lifecycle: transitions as transactions
 

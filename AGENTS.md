@@ -73,6 +73,12 @@ checked by eye on those screenshots or in a live browser. The packet spec's
 exact shape is `references/spec.md` — never reverse-engineered from the
 template.
 
+**Before / after gate.** Change cards must carry `before` / `after` stating
+what the system did and what it does now — the new value, error, state or call.
+Draw their figure with `scripts/figures.py` `before_after()`; `verify.py` fails
+an AFTER that is missing, vague, or only the BEFORE negated ("no longer X",
+"✗ blocked"). See `references/diagrams.md` § Per-change before / after.
+
 **Optional PDF** (does not run in the default build — same HTML, same CSS/SVG,
 so colours and layout match the page):
 

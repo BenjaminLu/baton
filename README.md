@@ -114,7 +114,10 @@ draw, embedding the extracted SVG. `scripts/` holds the mechanical scripts:
 `render.py` assembles the packet spec into the
 single HTML file (filling the template and escaping the payloads);
 `verify.py` scans for mechanical absences (the context's refusal
-declaration, a digest-thin context, the register); `snapshot.py` renders the
+declaration, a digest-thin context, the register) and runs the before/after
+gate — a change card whose AFTER is missing, vague or only "no longer"
+its BEFORE fails; `figures.py` holds the shared `before_after()` layout that
+refuses to draw a lazy AFTER; `snapshot.py` renders the
 page headless, fails on mechanical diagram defects, and emits screenshots;
 optional `export_pdf.py` prints that same HTML to a language-specific PDF
 (not part of the default build). Diagram correctness is then checked by eye

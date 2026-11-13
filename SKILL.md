@@ -75,6 +75,13 @@ before / after). Generate the set from one layout function, never free-draw
 them one by one. A status page that never shows what was actually fixed
 reads as if nothing was.
 
+**AFTER says what happens now — never that BEFORE stopped.** Every change
+card states the old behaviour and the new one as observable facts: the new
+value, error, state or call. "No longer diluted", "不再被稀釋", "✗ blocked" or a
+struck-through copy of the BEFORE box is not an AFTER; it is the card title
+restated. Use `scripts/figures.py` `before_after()` for the figure and fill
+`before` / `after` on the card; `verify.py` rejects the lazy forms.
+
 **Do not guess.** The reader cannot tell your inferences from your facts, so
 do not mix them. Deployment state — whether a migration ran, whether users
 see anything today — is not in the repository. When there is no PR, or `gh`

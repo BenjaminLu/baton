@@ -11,6 +11,9 @@ Usage: verify.py <page>.html [--repo .] [--register eli5|engineer]
 import argparse, json, re, sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from figures import lazy_after_reason  # noqa: E402  (one rule, shared with the layout)
+
 # An identifier a reader would have to decode. Marked terms (backticks, <code>)
 # and glossary entries are exempt — see the register rule in pipeline.md §4.
 IDENTIFIER = re.compile(
@@ -104,6 +107,60 @@ def check_context(html):
     return []
 
 
+CONCRETE = re.compile(r"`[^`]+`|\d|\"[^\"]+\"|「[^」]+」|“[^”]+”")
+SVG_OUTCOME = re.compile(
+    r'data-node="(before|after)-outcome".*?<text[^>]*data-en="([^"]*)"[^>]*data-hant="([^"]*)"', re.S)
+
+
+def _langs(v):
+    if isinstance(v, dict):
+        return v.get("en", ""), v.get("hant", v.get("en", ""))
+    return (v or ""), (v or "")
+
+
+def check_before_after(data):
+    """The gate against lazy before/after (diagrams.md § Per-change before / after).
+
+    A card that says only "the old problem is gone" tells the reader nothing
+    they could not have guessed from the title. Every change card must state
+    what the system did BEFORE and what it does AFTER — observable, concrete,
+    and the AFTER may not be the BEFORE with a negation bolted on.
+    """
+    problems = []
+    for idx, s in enumerate((data or {}).get("sections", [])):
+        is_card = s.get("kind") == "vuln"
+        has_pair = "before" in s or "after" in s
+        if not (is_card or has_pair):
+            continue
+        name = _langs(s.get("heading"))[0] or f"section {idx}"
+        if not s.get("before") or not s.get("after"):
+            problems.append(f'"{name}": change card has no `before` / `after` — state what the '
+                            "system did and what it does now (spec.md § vuln)")
+            continue
+        for lang, b, a in zip(("en", "hant"), _langs(s["before"]), _langs(s["after"])):
+            r = lazy_after_reason(b, a)
+            if r:
+                problems.append(f'"{name}" [{lang}]: {r}')
+            elif not CONCRETE.search(a):
+                problems.append(f'"{name}" [{lang}]: AFTER is not concrete — name the new value, '
+                                "error, state or call (a `code` term, a number or a quoted value): " + a[:80])
+        svg = s.get("svg")
+        if svg:
+            found = {k: (en, hant) for k, en, hant in SVG_OUTCOME.findall(svg)}
+            if set(found) != {"before", "after"}:
+                problems.append(f'"{name}": figure lacks data-node="before-outcome" and '
+                                '"after-outcome" boxes — draw it with scripts/figures.py before_after()')
+            else:
+                for lang in (0, 1):
+                    r = lazy_after_reason(found["before"][lang], found["after"][lang])
+                    if r:
+                        problems.append(f'"{name}" figure: {r}')
+            if re.search(r'data-node="after-outcome"[^>]*stroke-dasharray', svg) or "✗" in svg:
+                problems.append(f'"{name}" figure: AFTER outcome is drawn struck-through / ✗ — '
+                                "draw the new outcome as a live box instead")
+    return problems
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("packet")
@@ -112,14 +169,14 @@ def main():
     a = ap.parse_args()
 
     html, data = load(a.packet)
-    groups = [("context", check_context(html))]
+    groups = [("context", check_context(html)), ("before/after", check_before_after(data))]
     if a.register == "eli5":
         groups.append(("register",
                        check_register(data, (data or {}).get("glossary", []))))
 
     total = sum(len(p) for _, p in groups)
     if not total:
-        print("ok — context and register checked. "
+        print("ok — context, before/after and register checked. "
               "Diagrams are checked in the browser (pipeline §6).")
         return 0
 
