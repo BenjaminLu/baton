@@ -666,7 +666,10 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
   let idx = 0;
   const secs = D.sections || [];
 
-  const E = x => String(x==null?'':x).replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
+  // Escapes for text and for quoted attribute values alike: packet strings
+  // (a node kind, a tone, a heading used as aria-label) land in attributes.
+  const E = x => String(x==null?'':x).replace(/[<>&"']/g,
+    c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c]));
   // A transaction: the envelope of writes that commit together, then the
   // writes that do not. Rendered from data, never free-form, so the register
   // check and the reader both see the same field names the code uses.
@@ -1151,13 +1154,30 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
   // Escape first, then honour exactly three marks: [label](https://url),
   // `code`, **lead-in**. The link URL must be absolute http(s) — anything
   // else stays literal text, so a packet cannot smuggle javascript: or markup.
+  // Packet text comes from untrusted sources (a PR body, a review comment).
+  // A link's URL is taken from the raw text, checked against an allow-list and
+  // attribute-escaped; a refused link stays as plain text. verify.py applies
+  // the same rule (LINK / safe_href) and fails a packet that carries one.
+  const LINK=/\[([^\]\n]+)\]\(([^)\s]+)\)/g;
+  function safeHref(u){
+    if(/^(https?:\/\/|mailto:)/i.test(u)) return u;
+    if(/^[a-z][a-z0-9+.\-]*:/i.test(u)) return null;   // javascript:, data:, vbscript:, file: …
+    if(/^[\/\\]{2}/.test(u)) return null;             // protocol-relative
+    return u;                                         // relative: path, ./, ../, #anchor, ?query
+  }
+  function inline(t){
+    return E(t).replace(/`([^`]+)`/g,'<code>$1</code>').replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');
+  }
   function rich(v){
-    return String(v)
-      .replace(/[<>&]/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]))
-      .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g,
-        '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
-      .replace(/`([^`]+)`/g,'<code>$1</code>')
-      .replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');
+    const s=String(v==null?'':v); let out='', at=0, m;
+    LINK.lastIndex=0;
+    while((m=LINK.exec(s))){
+      const href=safeHref(m[2]); if(href==null) continue;
+      out+=inline(s.slice(at,m.index))+'<a href="'+E(href)+'" target="_blank" rel="noopener noreferrer">'+
+        inline(m[1])+'</a>';
+      at=m.index+m[0].length;
+    }
+    return out+inline(s.slice(at));
   }
 
   function paint(){

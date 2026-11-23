@@ -344,6 +344,47 @@ def check_boundary_review(html, data):
     return problems
 
 
+# The page's link rule (templates/packet.html rich() / safeHref()), mirrored:
+# http(s), mailto and relative URLs render as links; any other scheme
+# (javascript:, data:, vbscript:, file:) or a protocol-relative URL is refused
+# and shown as plain text. A packet carrying one is either an attack or a
+# broken link, so it fails here rather than silently losing the link.
+LINK = re.compile(r"\[([^\]\n]+)\]\(([^)\s]+)\)")
+
+
+def safe_href(url):
+    if re.match(r"(?i)^(https?://|mailto:)", url):
+        return url
+    if re.match(r"(?i)^[a-z][a-z0-9+.\-]*:", url) or re.match(r"^[/\\]{2}", url):
+        return None
+    return url
+
+
+def check_links(data):
+    problems = []
+    def walk(v, path="data"):
+        if isinstance(v, str):
+            for m in LINK.finditer(v):
+                url = m.group(2)
+                if safe_href(url) is None:
+                    problems.append(f'{path}: link "{m.group(1)[:30]}" → "{url[:60]}" uses a scheme '
+                                    "the page refuses — only http(s), mailto and relative links render")
+                elif re.search(r"[\"'<>`]", url):
+                    # The page escapes these, so nothing breaks out; a real URL
+                    # never needs them unencoded, so one here is a mistake or a probe.
+                    problems.append(f'{path}: link "{m.group(1)[:30]}" → "{url[:60]}" has a raw quote, '
+                                    "angle bracket or backtick — percent-encode it")
+        elif isinstance(v, dict):
+            for k, x in v.items():
+                if k != "svg":
+                    walk(x, f"{path}.{k}")
+        elif isinstance(v, list):
+            for i, x in enumerate(v):
+                walk(x, f"{path}[{i}]")
+    walk(data or {})
+    return problems
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("packet")
@@ -354,7 +395,8 @@ def main():
     html, data = load(a.packet)
     groups = [("context", check_context(html)), ("before/after", check_before_after(data)),
               ("components", check_components(data)),
-              ("boundary review", check_boundary_review(html, data))]
+              ("boundary review", check_boundary_review(html, data)),
+              ("links", check_links(data))]
     if a.register == "eli5":
         groups.append(("register",
                        check_register(data, (data or {}).get("glossary", []))))
