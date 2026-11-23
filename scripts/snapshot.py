@@ -13,10 +13,10 @@ It does two things, in order:
    - no svg text wider than the box or label-mask it sits in (per language)
    - no CJK text below 12px
    - no '[object Object]' anywhere, no blank section
-   - at 320, 390 and 1440 px wide: no horizontal page scroll (a wide table
+   - at 320, 390, 865, 1024, 1280 and 1440 px wide: no horizontal page scroll (a wide table
      scrolls in its own box) and no text squeezed to one or two characters
-     per line (a card cell or flex item that shrank to nothing), and every
-     boundary finding on its own row; in light
+     per line (a card cell or flex item that shrank to nothing), no node
+     name broken mid-word, and every boundary finding on its own row; in light
      and dark: pins and tags are >= 4.5:1 against
      what they sit on, and the page declares the matching color-scheme
    Failures print with figure/step indexes and the run exits 1 — fix the spec
@@ -141,6 +141,22 @@ window.addEventListener('load',()=>{setTimeout(()=>{
     for(let i=1;i<rows.length;i++) if(rows[i].top<rows[i-1].bottom-1){
       out.sideBySide.push(rows.length); break; }
   });
+  // A node name may break at a space or after / _ . (the <wbr> points, which
+  // split its text nodes) — never between two letters of one word.
+  out.midword=[];
+  document.querySelectorAll('.cnode .nm').forEach(n=>{
+    for(const t of [...n.childNodes].filter(x=>x.nodeType===3)){
+      const s=t.textContent; let prev=null;
+      for(let i=0;i<s.length;i++){
+        const rg=document.createRange(); rg.setStart(t,i); rg.setEnd(t,i+1);
+        const r=rg.getClientRects()[0]; if(!r) continue;
+        if(prev!==null && r.top>prev+2 && /\\w/.test(s[i-1]) && /\\w/.test(s[i])){
+          out.midword.push({name:n.textContent.trim().slice(0,30),at:i,
+            where:n.closest('.bmap')?'boundary map':'chain'}); break; }
+        prev=r.top;
+      }
+    }
+  });
   const prev=de.getAttribute('data-theme');
   for(const t of ['light','dark']){
     de.setAttribute('data-theme',t);
@@ -220,7 +236,7 @@ def main():
     # page runs in a same-origin (srcdoc) iframe of the width under test —
     # which is also how a host embeds it.
     inner = variant(src, FREEZE_CSS + SHOW_ALL_CSS, LAYOUT_JS)
-    for width in (320, 390, 1440):
+    for width in (320, 390, 865, 1024, 1280, 1440):
         lay = tmp / f"layout-{width}.html"
         lay.write_text(
             f'<!doctype html><body style="margin:0"><iframe id="f" style="width:{width}px;'
@@ -245,6 +261,9 @@ def main():
         for n in L.get("sideBySide", []):
             problems.append(f"{width}px: boundary findings ({n}) sit side by side — each finding "
                             "takes its own row")
+        for x in L.get("midword", []):
+            problems.append(f"{width}px: {x['where']} name '{x['name']}' breaks mid-word "
+                            f"at character {x['at']}")
         for x in L.get("crushed", []):
             problems.append(f"{width}px: {x['el']} '{x['text']}' wraps to {x['lines']} lines "
                             f"in {x['w']}px — about one character per line")

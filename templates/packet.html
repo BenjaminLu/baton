@@ -371,9 +371,28 @@ button.act:disabled{opacity:.4;cursor:default}
 .cgrid{display:grid;align-items:stretch;row-gap:.6rem}
 .cnode{border:1.5px solid var(--rule-strong);border-radius:8px;padding:.6rem .65rem;background:var(--card-2);
   min-height:4.4rem;display:flex;flex-direction:column;justify-content:center;text-align:center;min-width:0}
-.cnode .nm{font-weight:650;font-size:.98rem;line-height:1.3;overflow-wrap:anywhere}
-.cgrid.dense .cnode{padding:.55rem .3rem} .cgrid.dense .cnode .nm{font-size:.78rem}
-.cgrid.dense .carrow .hl{font-size:.62rem}
+/* break-word, not anywhere: the column's min-content then stops at the <wbr>
+   points (after / _ .), so a name breaks there and not mid-word; a single
+   segment wider than its box still breaks as the last resort. */
+.cnode .nm{font-weight:650;font-size:.98rem;line-height:1.3;overflow-wrap:break-word}
+/* Six or more boxes side by side: tighter boxes, a smaller name, and hop
+   labels never under 12px. Side by side only; stacked boxes are full width. */
+@media (min-width:56.01rem){
+  .cgrid.dense .cnode{padding:.55rem .3rem} .cgrid.dense .cnode .nm{font-size:.78rem}
+  .cgrid.dense .carrow .hl{font-size:max(12px,.62rem)}
+  .cgrid.dense .cnode .sb{font-size:max(12px,.68rem)} .cgrid.dense .cnode .sb.tx{font-size:.72rem}
+}
+/* A narrow desktop (about 900–1280px) gives every side-by-side lane the
+   same tighter step, so names keep their / _ . break points there too. */
+@media (min-width:56.01rem) and (max-width:80rem){
+  .cgrid .cnode{padding:.55rem .3rem} .cgrid .cnode .nm{font-size:.78rem}
+  .cgrid .carrow .hl{font-size:max(12px,.62rem)}
+  .cgrid .cnode .sb{font-size:max(12px,.68rem)} .cgrid .cnode .sb.tx{font-size:.72rem}
+}
+/* Code inside a box breaks at its <wbr> points like the text around it; the
+   global word-break:break-word would let it split anywhere and shrink the
+   column's min-content to one letter. */
+.cnode code,.cout code{word-break:normal;overflow-wrap:break-word}
 .cnode .sb{font-family:var(--mono);font-size:.76rem;color:var(--muted);margin-top:.3rem;line-height:1.4;overflow-wrap:break-word}
 .cnode .sb.tx{font-family:var(--sans);font-size:.86rem}
 .cnode.k-client{border-style:dashed}
@@ -387,14 +406,14 @@ button.act:disabled{opacity:.4;cursor:default}
    never come out two-tone. */
 .carrow.bad,.carrow.end{--ac:var(--amber)} .carrow.good{--ac:var(--accent)}
 .lane.after .carrow.end{--ac:var(--ok)} .carrow.okl{--ac:var(--ok)}
-.carrow .hl{font-family:var(--mono);font-size:.68rem;color:var(--muted);text-align:center;line-height:1.25;
+.carrow .hl{font-family:var(--mono);font-size:max(12px,.68rem);color:var(--muted);text-align:center;line-height:1.25;
   margin-bottom:.2rem;word-break:keep-all;overflow-wrap:break-word;max-width:100%}
 .carrow .ln{width:100%;min-width:1.6rem;height:0;border-top:2px solid var(--ac);position:relative}
 .carrow .ln::after{content:"";position:absolute;right:-2px;top:-7px;border:6px solid transparent;
   border-left:9px solid var(--ac);border-right:0}
 .cout{border:2px solid var(--amber);border-radius:8px;padding:.6rem .75rem;font-weight:700;font-size:1rem;
   line-height:1.35;display:flex;align-items:center;justify-content:center;text-align:center;min-height:4.4rem;
-  min-width:0;overflow-wrap:anywhere}
+  min-width:0;overflow-wrap:break-word}
 .lane.seal .cout{border-color:var(--seal)} .lane.after .cout{border-color:var(--ok)}
 .callout{position:relative;border:1px solid var(--amber);border-radius:6px;background:var(--card-2);
   padding:.55rem .75rem;font-size:.92rem;line-height:1.55;margin-top:.35rem}
@@ -722,9 +741,10 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
     // room for their names instead of the arrows taking it.
     const dense=n+(row.outcome!=null?1:0)>=6;
     // min-content: an arrow is never narrower than its longest hop-label word.
-    const arrow=dense?'minmax(min-content,.35fr)':'minmax(4.2rem,.5fr)';
-    const cols=[]; for(let i=0;i<n;i++){ cols.push('minmax(0,1fr)'); if(i<n-1||row.outcome!=null) cols.push(arrow); }
-    if(row.outcome!=null) cols.push('minmax(0,1.05fr)');
+    const arrow=dense?'minmax(min-content,.35fr)':'minmax(min-content,.5fr)';
+    // A box is never narrower than the longest unbreakable piece of its name.
+    const cols=[]; for(let i=0;i<n;i++){ cols.push('minmax(min-content,1fr)'); if(i<n-1||row.outcome!=null) cols.push(arrow); }
+    if(row.outcome!=null) cols.push('minmax(min-content,1.05fr)');
     let h='<div class="cgrid'+(dense?' dense':'')+'" style="grid-template-columns:'+cols.join(' ')+'">';
     const whyAt=row.why&&row.why.at;
     nodes.forEach((nd,i)=>{
@@ -748,7 +768,7 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
          (hl!=null?'<div class="hl">'+softBreaks(E(typeof hl==='string'?hl:pick(hl,lang)))+'</div>':'')+'<div class="ln"></div></div>';
     });
     // One span: as bare flex children, text and <code> would each shrink to a column.
-    if(row.outcome!=null) h+='<div class="cout" style="grid-column:'+(2*n+1)+';grid-row:1"><span>'+rich(pick(row.outcome,lang))+'</span></div>';
+    if(row.outcome!=null) h+='<div class="cout" style="grid-column:'+(2*n+1)+';grid-row:1"><span>'+softBreaks(rich(pick(row.outcome,lang)))+'</span></div>';
     return h+'</div>';
   }
   // A chip says verified only when its author said so. A missing or unknown
