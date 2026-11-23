@@ -634,7 +634,8 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
 <script>
 (function(){
   const D = JSON.parse(document.getElementById('baton-data').textContent);
-  const CTX = document.getElementById('baton-context').textContent;
+  // render.py breaks "</script" and "<!--" as "<\/script" and "<\!--"; undo it.
+  const CTX = document.getElementById('baton-context').textContent.replace(/<\\(?=\/script|!--)/gi,'<');
   const T = {
     en:{outline:'Contents',prev:'← Back',next:'Next →',of:(a,b)=>a+' of '+b,smapHint:'Click a state to see the database write behind it.',smapEmpty:'Click a state above.',
         hocap:'Hand off',
@@ -673,6 +674,39 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
   // A transaction: the envelope of writes that commit together, then the
   // writes that do not. Rendered from data, never free-form, so the register
   // check and the reader both see the same field names the code uses.
+  // A diagram's SVG comes from the packet, which a model writes from untrusted
+  // PR text, so it is never inserted as markup. It is parsed in an inert
+  // document (no scripts run, nothing loads), walked against an allow-list,
+  // and only then imported. verify.py's check_svg applies the same lists.
+  const SVG_NS='http://www.w3.org/2000/svg', XLINK_NS='http://www.w3.org/1999/xlink';
+  const SVG_OK=new Set(['svg','g','path','rect','circle','ellipse','line','polyline','polygon','text','tspan',
+    'defs','marker','title','desc','lineargradient','radialgradient','stop','clippath','mask','pattern','use']);
+  const urlOK=v=>!/url\s*\(/i.test(v.replace(/url\(\s*['"]?#[\w.:-]+['"]?\s*\)/gi,''));
+  const styleOK=v=>urlOK(v) && !/expression\s*\(|@import|javascript:|behavior\s*:|-moz-binding/i.test(v);
+  function cleanSVG(node){
+    for(const c of [...node.childNodes]){
+      if(c.nodeType===3) continue;
+      if(c.nodeType!==1 || c.namespaceURI!==SVG_NS || !SVG_OK.has(c.localName.toLowerCase())){ c.remove(); continue; }
+      for(const a of [...c.attributes]){
+        const n=a.name.toLowerCase(), v=a.value;
+        const isHref=n==='href'||n==='xlink:href'||a.localName==='href';
+        if(n.startsWith('on') || (isHref && !/^#[\w.:-]+$/.test(v)) ||
+           (n==='style' ? !styleOK(v) : !urlOK(v))) c.removeAttributeNode(a);
+      }
+      if(c.localName==='use' && !/^#/.test(c.getAttribute('href')||c.getAttributeNS(XLINK_NS,'href')||'')){ c.remove(); continue; }
+      cleanSVG(c);
+    }
+  }
+  function safeSVG(str){
+    const frag=document.createDocumentFragment();
+    if(!str) return frag;
+    const doc=new DOMParser().parseFromString('<body>'+String(str),'text/html');   // inert
+    const holder=doc.createElement('div');
+    for(const n of [...doc.body.childNodes]) if(n.nodeType===1 && n.namespaceURI===SVG_NS && n.localName==='svg') holder.appendChild(n);
+    cleanSVG(holder);
+    for(const n of [...holder.childNodes]) frag.appendChild(document.importNode(n,true));
+    return frag;
+  }
   function vulnHTML(s, lang){
     const P=v=>rich(pick(v,lang));   // problem/fix carry `code` and **bold**
     const sev=(s.severity||'p1').toLowerCase();
@@ -702,7 +736,7 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
       (t.fields||[]).forEach(f=>{
         h+='<tr><td class="k">'+E(f.k)+'</td><td class="v">';
         if(f.was!=null) h+='<span class="was">'+E(f.was)+'</span>';
-        h+='<span class="now '+(f.tone||'')+'">'+E(f.now)+'</span>';
+        h+='<span class="now '+E(f.tone||'')+'">'+E(f.now)+'</span>';
         if(f.why) h+='<span style="display:block;font-family:var(--sans);font-size:.8rem;color:var(--muted);margin-top:.1rem">'+P(f.why)+'</span>';
         h+='</td></tr>';
       });
@@ -1005,7 +1039,7 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
       const sub=document.createElement('p'); sub.className='sub'; sub.dataset.i='caption';
       sub.style.margin='0'; head.appendChild(sub);
       const body=document.createElement('div'); body.className='figbody';
-      body.innerHTML = s.svg || '';
+      body.append(safeSVG(s.svg));
       const lg=document.createElement('div'); lg.className='legend';
       f.append(head,body,lg); el.appendChild(f);
     } else if (s.kind==='statemap'){
@@ -1017,7 +1051,7 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
       const sub=document.createElement('p'); sub.className='sub'; sub.dataset.i='caption';
       sub.style.margin='0'; head.appendChild(sub);
       const body=document.createElement('div'); body.className='figbody';
-      body.innerHTML = s.svg || '';
+      body.append(safeSVG(s.svg));
       const stages=document.createElement('div'); stages.className='smap-stages';
       ['expand','backfill','cutover','contract'].forEach(k=>{
         const d=document.createElement('button'); d.type='button';
@@ -1061,7 +1095,7 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
       el.appendChild(chip);
       if (s.svg){
         const fig=document.createElement('div'); fig.className='figbody';
-        fig.style.margin='.6rem 0 .2rem'; fig.innerHTML=s.svg; el.appendChild(fig);
+        fig.style.margin='.6rem 0 .2rem'; fig.append(safeSVG(s.svg)); el.appendChild(fig);
         const lg=document.createElement('div'); lg.className='legend'; el.appendChild(lg);
       }
       const box=document.createElement('div'); box.className='vulnbox';
@@ -1151,19 +1185,19 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
     return h;
   }
 
-  // Escape first, then honour exactly three marks: [label](https://url),
-  // `code`, **lead-in**. The link URL must be absolute http(s) — anything
-  // else stays literal text, so a packet cannot smuggle javascript: or markup.
+  // Honour exactly three marks: [label](url), `code`, **lead-in**.
   // Packet text comes from untrusted sources (a PR body, a review comment).
   // A link's URL is taken from the raw text, checked against an allow-list and
   // attribute-escaped; a refused link stays as plain text. verify.py applies
   // the same rule (LINK / safe_href) and fails a packet that carries one.
-  const LINK=/\[([^\]\n]+)\]\(([^)\s]+)\)/g;
+  const LINK=/\[([^\]\n]+)\]\(([^)\t\n\x0b\f\r ]+)\)/g;   // same class as verify.py
+  // Default-deny: only http(s):// and mailto: become links. Any control
+  // character or space anywhere refuses the URL, because browsers strip
+  // leading C0 controls and tabs/newlines inside, so "\u0001javascript:"
+  // would otherwise run as javascript:.
   function safeHref(u){
-    if(/^(https?:\/\/|mailto:)/i.test(u)) return u;
-    if(/^[a-z][a-z0-9+.\-]*:/i.test(u)) return null;   // javascript:, data:, vbscript:, file: …
-    if(/^[\/\\]{2}/.test(u)) return null;             // protocol-relative
-    return u;                                         // relative: path, ./, ../, #anchor, ?query
+    if(/[\x00-\x20\x7f]/.test(u)) return null;
+    return /^(https?:\/\/|mailto:)/i.test(u) ? u : null;
   }
   function inline(t){
     return E(t).replace(/`([^`]+)`/g,'<code>$1</code>').replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');
@@ -1262,8 +1296,8 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
     document.getElementById('prev').disabled=idx===0;
     document.getElementById('next').disabled=idx===secs.length-1;
     document.getElementById('foot').innerHTML =
-      'baton · format '+D.format_version+' · <span class="layer">'+D.layer+'</span>'+
-      (D.layer_note?' · '+String(pick(D.layer_note,lang)).replace(/`/g,''):'');
+      'baton · format '+E(D.format_version)+' · <span class="layer">'+E(D.layer)+'</span>'+
+      (D.layer_note?' · '+E(String(pick(D.layer_note,lang)).replace(/`/g,'')):'');
   }
 
   let rsT=0; window.addEventListener('resize',()=>{ clearTimeout(rsT); rsT=setTimeout(()=>{

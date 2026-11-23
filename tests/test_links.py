@@ -49,17 +49,19 @@ class RichLinks(unittest.TestCase):
     def test_javascript_and_data_are_plain_text(self):
         for src in ("[x](javascript:alert(1))", "[x](JaVaScRiPt:alert(1))",
                     "[x](data:text/html,<script>alert(1)</script>)", "[x](vbscript:msgbox)",
-                    "[x](//evil.example)"):
+                    "[x](//evil.example)", "[x](\u0001javascript:alert(1))", "[x](\u001fdata:text/html,x)",
+                    "[x](\u0001//evil.example)", "[x](java\u0000script:x)", "[x](https://a\u0001b)",
+                    "[x](\u007fjavascript:x)", "[x](../relative.md)", "[x](#anchor)", "[x](/\\evil.example)"):
             out, = rich(src)
             self.assertNotIn("<a", out, src)
             self.assertNotIn("<script", out, src)
 
     def test_normal_links(self):
         out, = rich("see [the PR](https://github.com/o/r/pull/3?a=1&b=2) and [mail](mailto:a@b.c) "
-                    "and [spec](../references/spec.md#kinds)")
+                    "and [plain](HTTP://EXAMPLE.COM/x)")
         hrefs = [a["href"] for a in attrs_of_anchors(out)]
         self.assertEqual(hrefs, ["https://github.com/o/r/pull/3?a=1&b=2", "mailto:a@b.c",
-                                 "../references/spec.md#kinds"])
+                                 "HTTP://EXAMPLE.COM/x"])
         self.assertIn('href="https://github.com/o/r/pull/3?a=1&amp;b=2"', out)
 
     def test_entities_and_markup_stay_text(self):
@@ -75,7 +77,9 @@ class VerifyLinks(unittest.TestCase):
         return {"sections": [{"kind": "prose", "text": [{"p": {"en": text}}]}]}
 
     def test_refused_schemes_fail(self):
-        for url in ("javascript:alert(1)", "data:text/html,x", "vbscript:x", "//evil.example"):
+        for url in ("javascript:alert(1)", "data:text/html,x", "vbscript:x", "//evil.example",
+                    "\u0001javascript:x", "\u001fdata:text/html,x", "\u0001//evil.example",
+                    "java\u0000script:x", "\u007fjavascript:x", "../relative.md", "#top", "/\\evil"):
             self.assertEqual(len(check_links(self.packet(f"[x]({url})"))), 1, url)
 
     def test_quote_in_url_fails(self):
@@ -85,7 +89,7 @@ class VerifyLinks(unittest.TestCase):
 
     def test_normal_links_pass(self):
         self.assertEqual(check_links(self.packet(
-            "[a](https://x.y/p?a=1&b=2) [b](mailto:a@b.c) [c](../x.md#s) [d](#top)")), [])
+            "[a](https://x.y/p?a=1&b=2) [b](mailto:a@b.c) [c](HTTP://X.Y/z)")), [])
 
 
 if __name__ == "__main__":

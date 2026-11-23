@@ -345,19 +345,67 @@ def check_boundary_review(html, data):
 
 
 # The page's link rule (templates/packet.html rich() / safeHref()), mirrored:
-# http(s), mailto and relative URLs render as links; any other scheme
-# (javascript:, data:, vbscript:, file:) or a protocol-relative URL is refused
-# and shown as plain text. A packet carrying one is either an attack or a
-# broken link, so it fails here rather than silently losing the link.
-LINK = re.compile(r"\[([^\]\n]+)\]\(([^)\s]+)\)")
+# default-deny. Only http(s):// and mailto: render as links, and a URL with
+# any control character or space is refused, because browsers strip leading
+# C0 controls ("\x01javascript:" runs as javascript:). A packet carrying a
+# refused link is an attack or a broken link, so it fails here.
+LINK = re.compile(r"\[([^\]\n]+)\]\(([^)\t\n\x0b\f\r ]+)\)")   # same class as the page
 
 
 def safe_href(url):
-    if re.match(r"(?i)^(https?://|mailto:)", url):
-        return url
-    if re.match(r"(?i)^[a-z][a-z0-9+.\-]*:", url) or re.match(r"^[/\\]{2}", url):
+    if re.search(r"[\x00-\x20\x7f]", url):
         return None
-    return url
+    return url if re.match(r"(?i)^(https?://|mailto:)", url) else None
+
+
+# The page's SVG allow-list (templates/packet.html safeSVG()), mirrored, so a
+# diagram the page would strip fails here instead of silently losing parts.
+SVG_OK = {"svg", "g", "path", "rect", "circle", "ellipse", "line", "polyline", "polygon", "text",
+          "tspan", "defs", "marker", "title", "desc", "lineargradient", "radialgradient", "stop",
+          "clippath", "mask", "pattern", "use"}
+LOCAL_URL = re.compile(r"""(?i)url\(\s*['"]?#[\w.:-]+['"]?\s*\)""")
+BAD_STYLE = re.compile(r"(?i)expression\s*\(|@import|javascript:|behavior\s*:|-moz-binding")
+
+
+def _url_ok(v):
+    return not re.search(r"(?i)url\s*\(", LOCAL_URL.sub("", v))
+
+
+def check_svg_markup(svg):
+    from html.parser import HTMLParser
+    found = []
+    class P(HTMLParser):
+        def handle_starttag(self, tag, attrs):
+            if tag not in SVG_OK:
+                found.append(f"<{tag}> is not an allowed SVG element")
+                return
+            href = None
+            for name, value in attrs:
+                value = value or ""
+                if name.startswith("on"):
+                    found.append(f"<{tag} {name}>: event handlers are not allowed")
+                elif name in ("href", "xlink:href"):
+                    href = value
+                    if not re.fullmatch(r"#[\w.:-]+", value):
+                        found.append(f'<{tag} {name}="{value[:40]}">: only #fragment links are allowed')
+                elif name == "style" and (not _url_ok(value) or BAD_STYLE.search(value)):
+                    found.append(f'<{tag} style="{value[:40]}">: only url(#…) and plain values are allowed')
+                elif name != "style" and not _url_ok(value):
+                    found.append(f'<{tag} {name}="{value[:40]}">: only url(#…) is allowed')
+            if tag == "use" and not (href or "").startswith("#"):
+                found.append("<use> must point at a #fragment")
+        handle_startendtag = handle_starttag
+    P().feed(svg)
+    return list(dict.fromkeys(found))
+
+
+def check_svg(data):
+    problems = []
+    for i, sec in enumerate((data or {}).get("sections") or []):
+        if isinstance(sec.get("svg"), str):
+            name = _en(sec.get("heading")) or f"section {i+1}"
+            problems += [f'"{name}" svg: {p}' for p in check_svg_markup(sec["svg"])]
+    return problems
 
 
 def check_links(data):
@@ -367,8 +415,9 @@ def check_links(data):
             for m in LINK.finditer(v):
                 url = m.group(2)
                 if safe_href(url) is None:
-                    problems.append(f'{path}: link "{m.group(1)[:30]}" → "{url[:60]}" uses a scheme '
-                                    "the page refuses — only http(s), mailto and relative links render")
+                    problems.append(f'{path}: link "{m.group(1)[:30]}" → "{url[:60]!r}" is refused by the '
+                                    "page — only http(s):// and mailto: links render, with no control "
+                                    "characters or spaces")
                 elif re.search(r"[\"'<>`]", url):
                     # The page escapes these, so nothing breaks out; a real URL
                     # never needs them unencoded, so one here is a mistake or a probe.
@@ -396,7 +445,7 @@ def main():
     groups = [("context", check_context(html)), ("before/after", check_before_after(data)),
               ("components", check_components(data)),
               ("boundary review", check_boundary_review(html, data)),
-              ("links", check_links(data))]
+              ("links", check_links(data)), ("svg", check_svg(data))]
     if a.register == "eli5":
         groups.append(("register",
                        check_register(data, (data or {}).get("glossary", []))))
