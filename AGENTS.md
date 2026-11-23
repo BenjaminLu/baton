@@ -73,6 +73,10 @@ checked by eye on those screenshots or in a live browser. The packet spec's
 exact shape is `references/spec.md` — never reverse-engineered from the
 template.
 
+Changing a script or the template? `python3 -m unittest discover -s tests`
+covers the `verify.py` gates, and `snapshot.py` on a real packet covers the
+page at 320 and 390 px and in both themes.
+
 **Before / after gate.** Change cards must carry `before` / `after` stating
 what the system did and what it does now — the new value, error, state or call.
 Draw their figure with `scripts/figures.py` `before_after()`; `verify.py` fails
