@@ -379,8 +379,20 @@ def _text_attr(name):
     return name.startswith(("data-", "aria-")) and name not in ("aria-labelledby", "aria-describedby")
 
 
+CSS_FN = {"url", "var", "calc", "rgb", "rgba", "hsl", "hsla", "translate", "translatex", "translatey",
+          "rotate", "scale", "scalex", "scaley", "matrix", "skewx", "skewy"}
+URL_STRING = re.compile(r"""(["'])[^"']*(:|//)[^"']*\1""")
+
+
 def _url_ok(v):
-    return not re.search(r"(?i)url\s*\(", LOCAL_URL.sub("", v))
+    """The page's cssOK(): url() only as url(#id), only allow-listed CSS
+    functions (image-set(), element(), paint() … fetch without url()), and no
+    quoted string holding a URL."""
+    if re.search(r"(?i)url\s*\(", LOCAL_URL.sub("", v)):
+        return False
+    if any(m.group(1).lower() not in CSS_FN for m in re.finditer(r"(?i)(-?[a-z_][\w-]*)\s*\(", v)):
+        return False
+    return not URL_STRING.search(v)
 
 
 def check_svg_markup(svg):
@@ -407,9 +419,11 @@ def check_svg_markup(svg):
                     if not re.fullmatch(r"#[\w.:-]+", value):
                         found.append(f'<{tag} {name}="{value[:40]}">: only #fragment links are allowed')
                 elif name == "style" and (not _url_ok(value) or BAD_STYLE.search(value)):
-                    found.append(f'<{tag} style="{value[:40]}">: only url(#…) and plain values are allowed')
-                elif name != "style" and not _url_ok(value):
-                    found.append(f'<{tag} {name}="{value[:40]}">: only url(#…) is allowed')
+                    found.append(f'<{tag} style="{value[:40]}">: only url(#…), allow-listed CSS functions '
+                                 "and plain values are allowed")
+                elif name != "style" and not _text_attr(name) and not _url_ok(value):
+                    found.append(f'<{tag} {name}="{value[:40]}">: only url(#…) and allow-listed CSS '
+                                 "functions (var, calc, rgb, hsl, transforms) are allowed")
             if tag == "use" and not (href or "").startswith("#"):
                 found.append("<use> must point at a #fragment")
         handle_startendtag = handle_starttag

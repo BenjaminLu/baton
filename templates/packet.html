@@ -681,8 +681,16 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
   const SVG_NS='http://www.w3.org/2000/svg', XLINK_NS='http://www.w3.org/1999/xlink';
   const SVG_OK=new Set(['svg','g','path','rect','circle','ellipse','line','polyline','polygon','text','tspan',
     'defs','marker','title','desc','lineargradient','radialgradient','stop','clippath','mask','pattern','use']);
+  // CSS functions are allow-listed, not filtered: image-set(), element(),
+  // paint() and the like fetch or paint without ever spelling url(. Any other
+  // function name, url() that is not url(#id), or a quoted string holding a
+  // URL (":" or "//") drops the whole attribute.
+  const CSS_FN=new Set(['url','var','calc','rgb','rgba','hsl','hsla','translate','translatex','translatey',
+    'rotate','scale','scalex','scaley','matrix','skewx','skewy']);
   const urlOK=v=>!/url\s*\(/i.test(v.replace(/url\(\s*['"]?#[\w.:-]+['"]?\s*\)/gi,''));
-  const styleOK=v=>urlOK(v) && !/expression\s*\(|@import|javascript:|behavior\s*:|-moz-binding/i.test(v);
+  const cssOK=v=>urlOK(v) && [...v.matchAll(/(-?[a-z_][\w-]*)\s*\(/gi)].every(m=>CSS_FN.has(m[1].toLowerCase())) &&
+    !/(["'])[^"']*(:|\/\/)[^"']*\1/.test(v);
+  const styleOK=v=>cssOK(v) && !/expression\s*\(|@import|javascript:|behavior\s*:|-moz-binding/i.test(v);
   // Text-only attributes; every other value may be read as CSS, where a
   // backslash escape ("\75 rl(", "u\rl(") spells url( past the filter.
   const textAttr=n=>/^(data-|aria-)/.test(n) && n!=='aria-labelledby' && n!=='aria-describedby';
@@ -695,7 +703,7 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
         const n=a.name.toLowerCase(), v=a.value;
         const isHref=n==='href'||n==='xlink:href'||a.localName==='href';
         if(n.startsWith('on') || (isHref && !/^#[\w.:-]+$/.test(v)) || (!textAttr(n) && v.includes('\\')) ||
-           (n==='style' ? !styleOK(v) : !urlOK(v))) c.removeAttributeNode(a);
+           (n==='style' ? !styleOK(v) : !textAttr(n) && !cssOK(v))) c.removeAttributeNode(a);
       }
       if(c.localName==='use' && !/^#/.test(c.getAttribute('href')||c.getAttributeNS(XLINK_NS,'href')||'')){ c.remove(); continue; }
       cleanSVG(c);

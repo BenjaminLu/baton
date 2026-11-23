@@ -46,6 +46,16 @@ SVG = ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 40" onload="{sv
        ' fill="\\75 rl(http://evil.test/b)" stroke="u\\72 l(http://evil.test/c)"/>'
        '<rect id="next" width="1" height="1" style="mask:u\\rl(http://evil.test/d)"/>'
        '<rect id="prev" width="1" height="1"/>'
+       '<rect width="1" height="1" style="background:image-set(\'http://evil.test/e\' 1x)"/>'
+       '<rect width="1" height="1" style="background:-webkit-image-set(\'http://evil.test/f\' 1x)"/>'
+       '<rect width="1" height="1" style="border-image-source:image-set(\'http://evil.test/g\' 1x)"/>'
+       '<rect width="1" height="1" style="mask-image:image-set(\'http://evil.test/h\' 1x)"/>'
+       '<rect width="1" height="1" style="background:element(#edge)"/>'
+       '<rect width="1" height="1" style="background:paint(x)"/>'
+       '<rect width="1" height="1" fill="cross-fade(red, blue)"/>'
+       '<rect width="1" height="1" style="font-family:\'http://evil.test/i\'"/>'
+       '<rect width="1" height="1" transform="translate(1,2) rotate(3)" fill="rgb(1,2,3)"'
+       ' style="fill:var(--accent);width:calc(1px + 2px)"/>'
        '<style>@import "x";</style></svg>'
        '<img src="x" onerror="{img}">').format(
     svg_onload=on("svg-onload"), image=on("svg-image"), script=on("svg-script"), fo=on("svg-fo"),
@@ -92,6 +102,11 @@ window.addEventListener('load',()=>setTimeout(()=>{
     onattrs:[...document.querySelectorAll('*')].flatMap(e=>[...e.attributes]
       .filter(x=>/^on/i.test(x.name)).map(x=>e.tagName+' '+x.name)),
     svgTags:[...document.querySelectorAll('.figbody svg *')].map(e=>e.localName),
+    cssFns:[...document.querySelectorAll('.figbody svg *')].flatMap(e=>[...e.attributes]
+      .flatMap(x=>[...x.value.matchAll(/(-?[a-z_][\\w-]*)\\s*\\(/gi)].map(m=>m[1].toLowerCase()))),
+    quotedUrl:[...document.querySelectorAll('.figbody svg *')].some(e=>[...e.attributes]
+      .some(x=>/(["'])[^"']*(:|\\/\\/)[^"']*\\1/.test(x.value))),
+    allowedKept:!!document.querySelector('.figbody svg rect[transform][style*="calc("]'),
     backslash:[...document.querySelectorAll('.figbody svg *')].flatMap(e=>[...e.attributes]
       .filter(x=>x.value.includes(String.fromCharCode(92))).map(x=>e.localName+' '+x.name)),
     byId:['foot','next','prev'].map(i=>(document.getElementById(i)||{}).tagName),
@@ -146,6 +161,12 @@ class RenderedAttacks(unittest.TestCase):
     def test_svg_css_escapes_are_dropped(self):
         self.assertEqual(self.out["backslash"], [])
 
+    def test_svg_css_functions_are_allow_listed(self):
+        self.assertTrue(set(self.out["cssFns"]) <= {"url", "var", "calc", "rgb", "translate", "rotate"},
+                        self.out["cssFns"])
+        self.assertFalse(self.out["quotedUrl"])
+        self.assertTrue(self.out["allowedKept"], "allow-listed functions must survive")
+
     def test_svg_ids_cannot_clobber_page_ids(self):
         self.assertEqual(self.out["byId"], ["FOOTER", "BUTTON", "BUTTON"])
         self.assertGreater(self.out["footText"], 0)
@@ -187,13 +208,21 @@ class EmbedAndVerify(unittest.TestCase):
         for bad in ("<svg onload>", "<image>", "<script>", "<foreignobject>", "<a>", "<animate>",
                     "<set>", "<use href=", "<style>", "url(#", "<img>", "onclick",
                     '<rect style="background:\\75', '<rect fill="\\75', '<rect stroke="u\\72',
-                    '<rect style="mask:u\\rl', '<rect id="foot">', '<rect id="next">', '<rect id="prev">'):
+                    '<rect style="mask:u\\rl', '<rect id="foot">', '<rect id="next">', '<rect id="prev">',
+                    "background:image-set(", "background:-webkit-image-set(", "border-image-source:image-set(",
+                    "mask-image:image-set(", "background:element(", "background:paint(",
+                    '<rect fill="cross-fade(', "font-family:'http:"):
             self.assertIn(bad, svg, bad)
 
     def test_reserved_ids_are_the_templates_ids(self):
         ids = set(re.findall(r'\bid="([^"]+)"', (ROOT / "templates" / "packet.html").read_text()))
         self.assertEqual(verify.RESERVED_IDS, ids)
         self.assertTrue({"foot", "next", "prev", "title"} <= ids)
+
+    def test_allow_listed_css_functions_pass(self):
+        self.assertEqual(verify.check_svg_markup(
+            '<svg><rect transform="translate(1,2) rotate(3) scale(2) matrix(1,0,0,1,0,0) skewX(4)"'
+            ' fill="rgb(1,2,3)" stroke="hsla(1,2%,3%,.5)" style="fill:var(--a);width:calc(1px + 2px)"/></svg>'), [])
 
     def test_text_attributes_may_hold_a_backslash(self):
         self.assertEqual(verify.check_svg_markup('<svg><text data-en="C:\\dir" aria-label="a\\b">t</text></svg>'), [])
