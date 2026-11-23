@@ -27,7 +27,7 @@
   /* Tone colours for small text and the fills behind it. The series tones
      above are for strokes; as text, or as a fill under white text, they fall
      below 4.5:1, so pins and tags use these instead. */
-  --warn-ink:#7d5e34;--risk-ink:#80593f;--ok-ink:#56684c;--on-ink:#ffffff;
+  --warn-ink:#7d5e34;--risk-ink:#a3432a;--ok-ink:#56684c;--on-ink:#ffffff;
   /* Native controls and scrollbars follow the theme: the OS one by default,
      the one a host stamps in data-theme when it sets one. */
   color-scheme:light dark;
@@ -44,20 +44,20 @@
     --soft:#8e98ac;--rule:rgba(245,245,245,.12);--rule-strong:rgba(191,192,192,.25);
     --accent:#f08a59;--accent-tint:rgba(240,138,89,.10);--link:#6a95d8;
     --amber:#d3ad7a;--seal:#b88670;--ok:#9caf8f;
-    --warn-ink:#d3ad7a;--risk-ink:#d6a993;--ok-ink:#a9bd9c;--on-ink:#2d3142;
+    --warn-ink:#d3ad7a;--risk-ink:#f39b84;--ok-ink:#a9bd9c;--on-ink:#2d3142;
     --shadow:0 1px 2px rgba(0,0,0,.45),0 12px 32px rgba(0,0,0,.4)}
 }
 :root[data-theme=dark]{color-scheme:dark;--bg:#2d3142;--card:#393e53;--card-2:#333849;--fg:#f5f5f5;--muted:#bfc0c0;
     --soft:#8e98ac;--rule:rgba(245,245,245,.12);--rule-strong:rgba(191,192,192,.25);
     --accent:#f08a59;--accent-tint:rgba(240,138,89,.10);--link:#6a95d8;
     --amber:#d3ad7a;--seal:#b88670;--ok:#9caf8f;
-    --warn-ink:#d3ad7a;--risk-ink:#d6a993;--ok-ink:#a9bd9c;--on-ink:#2d3142;
+    --warn-ink:#d3ad7a;--risk-ink:#f39b84;--ok-ink:#a9bd9c;--on-ink:#2d3142;
     --shadow:0 1px 2px rgba(0,0,0,.45),0 12px 32px rgba(0,0,0,.4)}
 :root[data-theme=light]{color-scheme:light;--bg:#f5f5f5;--card:#ffffff;--card-2:#ececec;--fg:#2d3142;--muted:#4f5d75;
   --soft:#7a8399;--rule:rgba(45,49,66,.12);--rule-strong:#bfc0c0;
   --accent:#eb6c36;--accent-tint:rgba(235,108,54,.08);--link:#2e5aa8;
   --amber:#b8915a;--seal:#9c6b50;--ok:#7c8f6f;
-  --warn-ink:#7d5e34;--risk-ink:#80593f;--ok-ink:#56684c;--on-ink:#ffffff;
+  --warn-ink:#7d5e34;--risk-ink:#a3432a;--ok-ink:#56684c;--on-ink:#ffffff;
   --shadow:0 1px 2px rgba(45,49,66,.06),0 10px 28px rgba(45,49,66,.06)}
 
 /* One line scales the whole composition, so a 4K screen shows the same
@@ -372,6 +372,8 @@ button.act:disabled{opacity:.4;cursor:default}
 .cnode{border:1.5px solid var(--rule-strong);border-radius:8px;padding:.6rem .65rem;background:var(--card-2);
   min-height:4.4rem;display:flex;flex-direction:column;justify-content:center;text-align:center;min-width:0}
 .cnode .nm{font-weight:650;font-size:.98rem;line-height:1.3;overflow-wrap:anywhere}
+.cgrid.dense .cnode{padding:.55rem .3rem} .cgrid.dense .cnode .nm{font-size:.78rem}
+.cgrid.dense .carrow .hl{font-size:.62rem}
 .cnode .sb{font-family:var(--mono);font-size:.76rem;color:var(--muted);margin-top:.3rem;line-height:1.4;overflow-wrap:break-word}
 .cnode .sb.tx{font-family:var(--sans);font-size:.86rem}
 .cnode.k-client{border-style:dashed}
@@ -411,7 +413,9 @@ button.act:disabled{opacity:.4;cursor:default}
 .pchip i{width:.55rem;height:.55rem;border-radius:50%;background:var(--rule-strong);flex:0 0 auto}
 .pchip.verified i{background:var(--ok)} .pchip.code-only i{background:var(--amber)} .pchip.absent i{background:var(--seal)}
 .pchip.absent{border-style:dashed}
-.pchip.unknown{border-style:dotted} .pchip.unknown i{background:none;border:1.5px solid var(--soft)}
+.pchip.unknown{border-style:dotted} .pchip.unknown i{background:none;border:1.5px solid var(--muted)}
+.pchip .ps{font-family:var(--mono);font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;
+  border-left:1px solid var(--rule-strong);padding-left:.4rem}
 .pchip .pt{font-family:var(--mono);font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
 /* boundary map */
 .bmap .cnode{position:relative}
@@ -433,6 +437,7 @@ button.act:disabled{opacity:.4;cursor:default}
 /* compare (from → to) */
 /* A table wider than its card scrolls inside this box, never the page. */
 .tscroll{overflow-x:auto;max-width:100%;-webkit-overflow-scrolling:touch}
+.tscroll:focus-visible{outline:2px solid var(--link);outline-offset:2px}
 .tscroll>table{min-width:100%}
 table.mtx td:first-child{min-width:8.5rem}
 table.cmp,table.mtx{width:100%;border-collapse:separate;border-spacing:0;font-size:.95rem}
@@ -499,7 +504,6 @@ details.ctable td,details.ctable th{font-variant-numeric:tabular-nums}
   .callout::before{left:2rem!important;right:auto!important}
   .hflow{grid-auto-flow:row}
   .hstep + .hstep::before{content:"↓";left:50%;top:-1.35rem;transform:translateX(-50%)}
-  .bfind{grid-template-columns:auto 1fr}
 }
 /* Print / Save-as-PDF: same palette (exact colours), every step visible, chrome off. */
 @media print{
@@ -704,22 +708,30 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
   };
   const sub=(v,lang)=>{
     if(v==null) return '';
-    if(typeof v==='string') return '<div class="sb">'+rich(v)+'</div>';   // plain string = code term
+    if(typeof v==='string') return '<div class="sb">'+softBreaks(rich(v))+'</div>';   // plain string = code term
     return '<div class="sb tx">'+rich(pick(v,lang))+'</div>';
   };
+  // A long name with no spaces breaks after / _ . before it breaks anywhere
+  // (overflow-wrap:anywhere stays as the last resort). Text only, never inside a tag.
+  const softBreaks=h=>h.replace(/([\/_.])(?=[^<>]*(<|$))/g,'$1<wbr>');
   // One lane = the component chain once. Grid columns: node, arrow, node, …, arrow, outcome.
   function laneHTML(nodes, row, key, lang, opts){
     opts=opts||{};
     const hot=new Set(row.hot||[]); const n=nodes.length; const after=key==='after';
-    const cols=[]; for(let i=0;i<n;i++){ cols.push('minmax(0,1fr)'); if(i<n-1||row.outcome!=null) cols.push('minmax(4.2rem,.5fr)'); }
+    // Six or more boxes: narrower arrows and a smaller name, so the boxes keep
+    // room for their names instead of the arrows taking it.
+    const dense=n+(row.outcome!=null?1:0)>=6;
+    // min-content: an arrow is never narrower than its longest hop-label word.
+    const arrow=dense?'minmax(min-content,.35fr)':'minmax(4.2rem,.5fr)';
+    const cols=[]; for(let i=0;i<n;i++){ cols.push('minmax(0,1fr)'); if(i<n-1||row.outcome!=null) cols.push(arrow); }
     if(row.outcome!=null) cols.push('minmax(0,1.05fr)');
-    let h='<div class="cgrid" style="grid-template-columns:'+cols.join(' ')+'">';
+    let h='<div class="cgrid'+(dense?' dense':'')+'" style="grid-template-columns:'+cols.join(' ')+'">';
     const whyAt=row.why&&row.why.at;
     nodes.forEach((nd,i)=>{
       const st=hot.has(nd.id)?(after?'good':'bad'):'';
       const badge=(opts.badges||{})[nd.id];
       h+='<div class="cnode k-'+E(nd.kind||'service')+' '+st+'" style="grid-column:'+(2*i+1)+';grid-row:1">'+
-         (badge?badge:'')+'<div class="nm">'+rich(pick(nd.name,lang))+'</div>'+sub((row.sub||{})[nd.id],lang)+'</div>';
+         (badge?badge:'')+'<div class="nm">'+softBreaks(rich(pick(nd.name,lang)))+'</div>'+sub((row.sub||{})[nd.id],lang)+'</div>';
       if(whyAt===nd.id && row.why.text){
         const left=i<n/2; const span=Math.min(3,2*n+1-(2*i));
         const gc=left?((2*i+1)+' / span '+Math.max(1,span)):(Math.max(1,2*i-1)+' / '+(2*i+2));
@@ -733,9 +745,10 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
       if(hb) ac='bad'; else if(opts.okLinks && i<n-1) ac='okl';
       const hl=(row.hops||{})[i];
       h+='<div class="carrow '+ac+'" style="grid-column:'+(2*i+2)+';grid-row:1">'+(hb?hb:'')+
-         (hl!=null?'<div class="hl">'+E(typeof hl==='string'?hl:pick(hl,lang))+'</div>':'')+'<div class="ln"></div></div>';
+         (hl!=null?'<div class="hl">'+softBreaks(E(typeof hl==='string'?hl:pick(hl,lang)))+'</div>':'')+'<div class="ln"></div></div>';
     });
-    if(row.outcome!=null) h+='<div class="cout" style="grid-column:'+(2*n+1)+';grid-row:1">'+rich(pick(row.outcome,lang))+'</div>';
+    // One span: as bare flex children, text and <code> would each shrink to a column.
+    if(row.outcome!=null) h+='<div class="cout" style="grid-column:'+(2*n+1)+';grid-row:1"><span>'+rich(pick(row.outcome,lang))+'</span></div>';
     return h+'</div>';
   }
   // A chip says verified only when its author said so. A missing or unknown
@@ -746,7 +759,8 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
     if(!list||!list.length) return '';
     return '<div class="proof"><span class="pl">'+pick(KL.proof,lang)+'</span>'+list.map(p=>
       '<span class="pchip '+E(chipState(p))+'" title="'+E(pick(KL[chipState(p)],lang))+'"><i></i>'+
-      (p.type?'<span class="pt">'+E(p.type)+'</span>':'')+rich(pick(p.label,lang))+'</span>').join('')+'</div>';
+      (p.type?'<span class="pt">'+E(p.type)+'</span>':'')+rich(pick(p.label,lang))+
+      (chipState(p)==='unknown'?'<span class="ps">'+E(pick(KL.unknown,lang))+'</span>':'')+'</span>').join('')+'</div>';
   }
   function chainHTML(s, lang){
     const seal=(s.tone==='risk')?' seal':'';
@@ -780,14 +794,18 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
   }
   function compareHTML(s, lang){
     const c=s.cols||[];
-    let h='<div class="tscroll"><table class="cmp"><thead><tr><th>'+E(pick(c[0],lang))+'</th><th>'+E(pick(c[1],lang))+'</th><th></th><th>'+E(pick(c[2],lang))+'</th></tr></thead><tbody>';
+    let h=tscroll(s.heading,lang)+'<table class="cmp"><thead><tr><th>'+E(pick(c[0],lang))+'</th><th>'+E(pick(c[1],lang))+'</th><th></th><th>'+E(pick(c[2],lang))+'</th></tr></thead><tbody>';
     (s.rows||[]).forEach(r=>{ h+='<tr><td class="dim">'+rich(pick(r[0],lang))+'</td><td class="from">'+rich(pick(r[1],lang))+
       '</td><td class="arr">→</td><td class="to">'+rich(pick(r[2],lang))+'</td></tr>'; });
     return h+'</tbody></table></div>';
   }
+  // A table that may scroll sideways: a named, focusable region, so a keyboard
+  // user can tab to it and scroll it with the arrow keys.
+  const tscroll=(name,lang)=>'<div class="tscroll" role="region" tabindex="0" aria-label="'+
+    E(pick(name,lang)||pick(CL.table,lang))+'">';
   const MK={have:'✓',part:'~',gap:'✕',plan:'○',na:'—'};
   function matrixHTML(s, lang){
-    let h='<div class="tscroll"><table class="mtx"><thead><tr><th></th>'+(s.cols||[]).map(c=>'<th class="c">'+E(pick(c,lang))+'</th>').join('')+'</tr></thead><tbody>';
+    let h=tscroll(s.heading,lang)+'<table class="mtx"><thead><tr><th></th>'+(s.cols||[]).map(c=>'<th class="c">'+E(pick(c,lang))+'</th>').join('')+'</tr></thead><tbody>';
     (s.rows||[]).forEach(r=>{ h+='<tr><td>'+rich(pick(r.k,lang))+'</td>'+(r.v||[]).map(v=>
       '<td class="c"><span class="mk '+E(v)+'">'+(MK[v]||'')+'</span></td>').join('')+'</tr>'; });
     h+='</tbody></table></div>';
@@ -821,7 +839,7 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
     h+='<div class="plot"></div><div class="tip" role="status"></div></div>';
     // table view: every value reachable without hover (contrast relief + a11y)
     const xs=(s.x||[]).map(v=>typeof v==='object'?pick(v,lang):v);
-    h+='<details class="ctable"><summary>'+pick(CL.table,lang)+'</summary><div class="tscroll"><table class="mtx"><thead><tr><th></th>'+
+    h+='<details class="ctable"><summary>'+pick(CL.table,lang)+'</summary>'+tscroll(CL.table,lang)+'<table class="mtx"><thead><tr><th></th>'+
       ser.map(x=>'<th class="c">'+E(pick(x.name,lang))+'</th>').join('')+'</tr></thead><tbody>'+
       xs.map((x,j)=>'<tr><td>'+E(x)+'</td>'+ser.map(se=>'<td class="c">'+E(fmt(se.values[j],s.unit))+'</td>').join('')+'</tr>').join('')+
       '</tbody></table></div></details>';
@@ -1229,6 +1247,8 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
   document.getElementById('next').addEventListener('click',()=>go(idx+1));
   addEventListener('keydown',e=>{
     if(e.target.tagName==='TEXTAREA') return;
+    // Arrow keys on a sideways-scrolling table scroll the table, not the page.
+    if(e.target.closest&&e.target.closest('.tscroll')) return;
     if(e.key==='ArrowRight'||e.key==='j') go(idx+1);
     if(e.key==='ArrowLeft'||e.key==='k') go(idx-1);
   });

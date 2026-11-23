@@ -13,8 +13,11 @@ It does two things, in order:
    - no svg text wider than the box or label-mask it sits in (per language)
    - no CJK text below 12px
    - no '[object Object]' anywhere, no blank section
-   - at 320 and 390 px wide: no horizontal page scroll (a wide table scrolls
-     in its own box); in light and dark: pins and tags are >= 4.5:1 against
+   - at 320, 390 and 1440 px wide: no horizontal page scroll (a wide table
+     scrolls in its own box) and no text squeezed to one or two characters
+     per line (a card cell or flex item that shrank to nothing), and every
+     boundary finding on its own row; in light
+     and dark: pins and tags are >= 4.5:1 against
      what they sit on, and the page declares the matching color-scheme
    Failures print with figure/step indexes and the run exits 1 — fix the spec
    and re-run before spending any screenshots.
@@ -96,7 +99,10 @@ window.addEventListener('load',()=>{setTimeout(()=>{
 
 # Run at a phone width with every step visible; reports the layout and theme
 # failures a screenshot at 1440 never shows.
+CRUSH_SEL = (".bfind .ttl,.cout,.cnode .nm,.cnode .sb,.callout,.carrow .hl,.kbox td,.kbox th,"
+             ".hstep b,.hstep p,.pchip,.kcard>h3,.kcard>.claim,.kcard>.cap")
 LAYOUT_JS = """<script>
+const CRUSH_SEL='""" + CRUSH_SEL + """';
 window.addEventListener('load',()=>{setTimeout(()=>{
   const out={width:innerWidth,hscroll:null,offenders:[],contrast:[],scheme:[]};
   const de=document.documentElement;
@@ -116,6 +122,25 @@ window.addEventListener('load',()=>{setTimeout(()=>{
       return r.width&&r.right>W+0.5&&!clipped(e);}).slice(0,5).map(e=>e.tagName.toLowerCase()+'.'+
       [...e.classList].join('.')+' +'+Math.round(e.getBoundingClientRect().right-W)+'px');
   }
+  // Text squeezed to a character or two per line: a flex or grid cell that
+  // shrank to nothing (findings side by side, an outcome split into flex items).
+  out.crushed=[];
+  document.querySelectorAll(CRUSH_SEL).forEach(e=>{
+    const chars=e.textContent.replace(/\\s/g,'').length; if(chars<6) return;
+    const rg=document.createRange(); rg.selectNodeContents(e);
+    const tops=new Set([...rg.getClientRects()].filter(r=>r.width>0).map(r=>Math.round(r.top)));
+    if(tops.size>=4 && chars/tops.size<3)
+      out.crushed.push({el:e.tagName.toLowerCase()+'.'+[...e.classList].join('.'),
+        text:e.textContent.trim().slice(0,30),lines:tops.size,w:Math.round(e.getBoundingClientRect().width)});
+  });
+  // Boundary findings are a list: one per row. Two on one row squeeze each
+  // title into half the card, which at phone width is a column of words.
+  out.sideBySide=[];
+  document.querySelectorAll('.bfind').forEach(b=>{
+    const rows=[...b.children].map(c=>c.getBoundingClientRect()).filter(r=>r.height>0);
+    for(let i=1;i<rows.length;i++) if(rows[i].top<rows[i-1].bottom-1){
+      out.sideBySide.push(rows.length); break; }
+  });
   const prev=de.getAttribute('data-theme');
   for(const t of ['light','dark']){
     de.setAttribute('data-theme',t);
@@ -190,12 +215,12 @@ def main():
     for x in r["cjk"]:      problems.append(f"fig {x['fig']} [{x['lang']}]: CJK at {x['size']}px (<12): '{x['text'][:40]}'")
     for i in r["blank"]:    problems.append(f"step {i}: renders blank")
     if r["objectObject"]:   problems.append("'[object Object]' appears on the page")
-    # -- pass 1b: phone widths, both themes --------------------------------
+    # -- pass 1b: phone and desktop widths, both themes ---------------------
     # Headless Chrome will not open a window narrower than 500px, so the
     # page runs in a same-origin (srcdoc) iframe of the width under test —
     # which is also how a host embeds it.
     inner = variant(src, FREEZE_CSS + SHOW_ALL_CSS, LAYOUT_JS)
-    for width in (320, 390):
+    for width in (320, 390, 1440):
         lay = tmp / f"layout-{width}.html"
         lay.write_text(
             f'<!doctype html><body style="margin:0"><iframe id="f" style="width:{width}px;'
@@ -205,7 +230,7 @@ def main():
             "const p=document.createElement('pre');p.id='baton-layout';p.textContent=r.textContent;"
             "document.body.appendChild(p);},50);</script></body>")
         dom = subprocess.run([bin_, "--headless=new", "--disable-gpu",
-                              "--window-size=800,1000",
+                              "--window-size=1500,1000",
                               "--virtual-time-budget=5000", "--dump-dom",
                               lay.resolve().as_uri()],
                              capture_output=True, text=True, timeout=120).stdout
@@ -217,6 +242,12 @@ def main():
         if L["hscroll"]:
             problems.append(f"{width}px: the page scrolls sideways by {L['hscroll']}px — "
                             f"first overflowing: {', '.join(L['offenders']) or '?'}")
+        for n in L.get("sideBySide", []):
+            problems.append(f"{width}px: boundary findings ({n}) sit side by side — each finding "
+                            "takes its own row")
+        for x in L.get("crushed", []):
+            problems.append(f"{width}px: {x['el']} '{x['text']}' wraps to {x['lines']} lines "
+                            f"in {x['w']}px — about one character per line")
         if width == 320:   # theme checks do not depend on width
             for x in L["contrast"]:
                 problems.append(f"[{x['theme']}] {x['el']} '{x['text']}' is {x['ratio']}:1 "
