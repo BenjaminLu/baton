@@ -367,6 +367,18 @@ LOCAL_URL = re.compile(r"""(?i)url\(\s*['"]?#[\w.:-]+['"]?\s*\)""")
 BAD_STYLE = re.compile(r"(?i)expression\s*\(|@import|javascript:|behavior\s*:|-moz-binding")
 
 
+# Ids the page itself uses (getElementById targets). The page prefixes every
+# diagram id, so a collision cannot clobber them any more, but a diagram that
+# names one is a probe or a mistake. Read from the template, so the list
+# cannot drift from it.
+TEMPLATE = Path(__file__).resolve().parent.parent / "templates" / "packet.html"
+RESERVED_IDS = set(re.findall(r'\bid="([^"]+)"', TEMPLATE.read_text())) if TEMPLATE.exists() else set()
+
+
+def _text_attr(name):
+    return name.startswith(("data-", "aria-")) and name not in ("aria-labelledby", "aria-describedby")
+
+
 def _url_ok(v):
     return not re.search(r"(?i)url\s*\(", LOCAL_URL.sub("", v))
 
@@ -382,6 +394,12 @@ def check_svg_markup(svg):
             href = None
             for name, value in attrs:
                 value = value or ""
+                if name == "id" and value in RESERVED_IDS:
+                    found.append(f'<{tag} id="{value}">: the page uses that id — rename it')
+                if "\\" in value and not _text_attr(name):
+                    found.append(f'<{tag} {name}="{value[:40]}">: a backslash can hide a CSS escape '
+                                 "(\\75 rl( spells url() — drop it")
+                    continue
                 if name.startswith("on"):
                     found.append(f"<{tag} {name}>: event handlers are not allowed")
                 elif name in ("href", "xlink:href"):

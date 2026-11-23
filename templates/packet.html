@@ -683,6 +683,10 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
     'defs','marker','title','desc','lineargradient','radialgradient','stop','clippath','mask','pattern','use']);
   const urlOK=v=>!/url\s*\(/i.test(v.replace(/url\(\s*['"]?#[\w.:-]+['"]?\s*\)/gi,''));
   const styleOK=v=>urlOK(v) && !/expression\s*\(|@import|javascript:|behavior\s*:|-moz-binding/i.test(v);
+  // Text-only attributes; every other value may be read as CSS, where a
+  // backslash escape ("\75 rl(", "u\rl(") spells url( past the filter.
+  const textAttr=n=>/^(data-|aria-)/.test(n) && n!=='aria-labelledby' && n!=='aria-describedby';
+  let svgSeq=0;
   function cleanSVG(node){
     for(const c of [...node.childNodes]){
       if(c.nodeType===3) continue;
@@ -690,12 +694,28 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
       for(const a of [...c.attributes]){
         const n=a.name.toLowerCase(), v=a.value;
         const isHref=n==='href'||n==='xlink:href'||a.localName==='href';
-        if(n.startsWith('on') || (isHref && !/^#[\w.:-]+$/.test(v)) ||
+        if(n.startsWith('on') || (isHref && !/^#[\w.:-]+$/.test(v)) || (!textAttr(n) && v.includes('\\')) ||
            (n==='style' ? !styleOK(v) : !urlOK(v))) c.removeAttributeNode(a);
       }
       if(c.localName==='use' && !/^#/.test(c.getAttribute('href')||c.getAttributeNS(XLINK_NS,'href')||'')){ c.remove(); continue; }
       cleanSVG(c);
     }
+  }
+  // Every id in a diagram gets a per-figure prefix, and every reference to an
+  // id (url(#…), href="#…", aria-labelledby/-describedby) is rewritten to
+  // match, so a diagram can neither shadow a page id (getElementById('foot'))
+  // nor point at one.
+  function scopeIds(root, pre){
+    const ref=v=>v.replace(/url\(\s*(['"]?)#([\w.:-]+)\1\s*\)/gi,(m,q,id)=>'url(#'+pre+id+')');
+    root.querySelectorAll('*').forEach(e=>{
+      for(const a of [...e.attributes]){
+        const n=a.name.toLowerCase();
+        if(n==='id') a.value=pre+a.value;
+        else if(n==='href'||n==='xlink:href'||a.localName==='href') a.value='#'+pre+a.value.slice(1);
+        else if(n==='aria-labelledby'||n==='aria-describedby') a.value=a.value.trim().split(/\s+/).map(x=>pre+x).join(' ');
+        else if(/url\(/i.test(a.value)) a.value=ref(a.value);
+      }
+    });
   }
   function safeSVG(str){
     const frag=document.createDocumentFragment();
@@ -704,6 +724,7 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
     const holder=doc.createElement('div');
     for(const n of [...doc.body.childNodes]) if(n.nodeType===1 && n.namespaceURI===SVG_NS && n.localName==='svg') holder.appendChild(n);
     cleanSVG(holder);
+    scopeIds(holder, 'bsvg'+(++svgSeq)+'-');
     for(const n of [...holder.childNodes]) frag.appendChild(document.importNode(n,true));
     return frag;
   }
