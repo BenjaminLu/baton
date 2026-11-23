@@ -141,18 +141,23 @@ window.addEventListener('load',()=>{setTimeout(()=>{
     for(let i=1;i<rows.length;i++) if(rows[i].top<rows[i-1].bottom-1){
       out.sideBySide.push(rows.length); break; }
   });
-  // A node name may break at a space or after / _ . (the <wbr> points, which
-  // split its text nodes) — never between two letters of one word.
+  // A node name, sub or outcome may break at a space or at an inserted
+  // soft-break point (the <wbr>s softBreaks() adds, which split text nodes) —
+  // never between two letters inside a run that has no soft break.
   out.midword=[];
-  document.querySelectorAll('.cnode .nm').forEach(n=>{
-    for(const t of [...n.childNodes].filter(x=>x.nodeType===3)){
+  document.querySelectorAll('.cnode .nm,.cnode .sb,.cout').forEach(n=>{
+    // Every text node under it: a <wbr> (or a tag) ends a text node, so a
+    // break at an inserted soft-break point is never inside one.
+    const tw=document.createTreeWalker(n,NodeFilter.SHOW_TEXT); const texts=[];
+    while(tw.nextNode()) texts.push(tw.currentNode);
+    for(const t of texts){
       const s=t.textContent; let prev=null;
       for(let i=0;i<s.length;i++){
         const rg=document.createRange(); rg.setStart(t,i); rg.setEnd(t,i+1);
         const r=rg.getClientRects()[0]; if(!r) continue;
         if(prev!==null && r.top>prev+2 && /\\w/.test(s[i-1]) && /\\w/.test(s[i])){
           out.midword.push({name:n.textContent.trim().slice(0,30),at:i,
-            where:n.closest('.bmap')?'boundary map':'chain'}); break; }
+            where:(n.closest('.bmap')?'boundary map':'chain')+(n.classList.contains('cout')?' outcome':n.classList.contains('sb')?' sub':'')}); break; }
         prev=r.top;
       }
     }
@@ -262,7 +267,7 @@ def main():
             problems.append(f"{width}px: boundary findings ({n}) sit side by side — each finding "
                             "takes its own row")
         for x in L.get("midword", []):
-            problems.append(f"{width}px: {x['where']} name '{x['name']}' breaks mid-word "
+            problems.append(f"{width}px: {x['where']} '{x['name']}' breaks mid-word "
                             f"at character {x['at']}")
         for x in L.get("crushed", []):
             problems.append(f"{width}px: {x['el']} '{x['text']}' wraps to {x['lines']} lines "

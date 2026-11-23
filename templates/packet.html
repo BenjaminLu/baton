@@ -393,6 +393,7 @@ button.act:disabled{opacity:.4;cursor:default}
    global word-break:break-word would let it split anywhere and shrink the
    column's min-content to one letter. */
 .cnode code,.cout code{word-break:normal;overflow-wrap:break-word}
+.cout>span{min-width:0;max-width:100%}
 .cnode .sb{font-family:var(--mono);font-size:.76rem;color:var(--muted);margin-top:.3rem;line-height:1.4;overflow-wrap:break-word}
 .cnode .sb.tx{font-family:var(--sans);font-size:.86rem}
 .cnode.k-client{border-style:dashed}
@@ -728,11 +729,22 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
   const sub=(v,lang)=>{
     if(v==null) return '';
     if(typeof v==='string') return '<div class="sb">'+softBreaks(rich(v))+'</div>';   // plain string = code term
-    return '<div class="sb tx">'+rich(pick(v,lang))+'</div>';
+    return '<div class="sb tx">'+softBreaks(rich(pick(v,lang)))+'</div>';
   };
-  // A long name with no spaces breaks after / _ . before it breaks anywhere
-  // (overflow-wrap:anywhere stays as the last resort). Text only, never inside a tag.
-  const softBreaks=h=>h.replace(/([\/_.])(?=[^<>]*(<|$))/g,'$1<wbr>');
+  // Where a long name may break: after / _ . and, inside a run of 16+ letters
+  // or digits, at camelCase and letter/digit seams; a run with no seam (ALLCAPS,
+  // lowercase, a hex hash) every 14 characters. Each break is a <wbr>, so a
+  // column's min-content never exceeds ~14 characters and a name breaks at a
+  // seam, never mid-word. Text only: tags are passed through untouched.
+  const SOFT_RUN=14;
+  const chunk=w=>w.length<=SOFT_RUN?w:w.match(new RegExp('.{1,'+SOFT_RUN+'}','g')).join('<wbr>');
+  const softRun=w=>{
+    if(/^[0-9a-f]+$/i.test(w) && /\d/.test(w)) return chunk(w);   // a hash: seams mean nothing
+    return w.replace(/([a-z])(?=[A-Z])|([A-Z])(?=[A-Z][a-z])|([A-Za-z])(?=\d)|(\d)(?=[A-Za-z])/g,'$&\u0000')
+      .split('\u0000').map(chunk).join('<wbr>');
+  };
+  const softBreaks=h=>h.split(/(<[^>]*>)/).map((t,i)=>i%2?t:
+    t.replace(/[\/_.]/g,'$&<wbr>').replace(/[A-Za-z0-9]{16,}/g,softRun)).join('');
   // One lane = the component chain once. Grid columns: node, arrow, node, …, arrow, outcome.
   function laneHTML(nodes, row, key, lang, opts){
     opts=opts||{};
