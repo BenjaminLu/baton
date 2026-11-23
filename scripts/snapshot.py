@@ -13,6 +13,9 @@ It does two things, in order:
    - no svg text wider than the box or label-mask it sits in (per language)
    - no CJK text below 12px
    - no '[object Object]' anywhere, no blank section
+   - at 320 and 390 px wide: no horizontal page scroll (a wide table scrolls
+     in its own box); in light and dark: pins and tags are >= 4.5:1 against
+     what they sit on, and the page declares the matching color-scheme
    Failures print with figure/step indexes and the run exits 1 — fix the spec
    and re-run before spending any screenshots.
 
@@ -91,6 +94,48 @@ window.addEventListener('load',()=>{setTimeout(()=>{
 </script>"""
 
 
+# Run at a phone width with every step visible; reports the layout and theme
+# failures a screenshot at 1440 never shows.
+LAYOUT_JS = """<script>
+window.addEventListener('load',()=>{setTimeout(()=>{
+  const out={width:innerWidth,hscroll:null,offenders:[],contrast:[],scheme:[]};
+  const de=document.documentElement;
+  const lum=c=>{const v=(c.match(/[\\d.]+/g)||[]).slice(0,3).map(Number).map(x=>{x/=255;
+    return x<=0.03928?x/12.92:Math.pow((x+0.055)/1.055,2.4);});
+    return 0.2126*v[0]+0.7152*v[1]+0.0722*v[2];};
+  const ratio=(a,b)=>{const x=lum(a),y=lum(b);return (Math.max(x,y)+.05)/(Math.min(x,y)+.05);};
+  const opaque=c=>c&&c!=='transparent'&&!/rgba\\([^)]*,\\s*0\\)$/.test(c);
+  const bgOf=el=>{for(;el;el=el.parentElement){const c=getComputedStyle(el).backgroundColor;if(opaque(c))return c;}
+    return getComputedStyle(document.body).backgroundColor;};
+  const W=de.clientWidth;
+  out.hscroll=de.scrollWidth>W?de.scrollWidth-W:0;
+  if(out.hscroll){
+    const clipped=e=>{for(let p=e.parentElement;p&&p!==document.body;p=p.parentElement){
+      if(/auto|scroll|hidden|clip/.test(getComputedStyle(p).overflowX))return true;}return false;};
+    out.offenders=[...document.querySelectorAll('body *')].filter(e=>{const r=e.getBoundingClientRect();
+      return r.width&&r.right>W+0.5&&!clipped(e);}).slice(0,5).map(e=>e.tagName.toLowerCase()+'.'+
+      [...e.classList].join('.')+' +'+Math.round(e.getBoundingClientRect().right-W)+'px');
+  }
+  const prev=de.getAttribute('data-theme');
+  for(const t of ['light','dark']){
+    de.setAttribute('data-theme',t);
+    const cs=getComputedStyle(de).colorScheme;
+    if(cs.trim()!==t) out.scheme.push({theme:t,colorScheme:cs});
+    const seen=new Set();
+    document.querySelectorAll('.badge,.ktag').forEach(e=>{
+      const key=e.className; if(seen.has(key))return; seen.add(key);
+      const r=ratio(getComputedStyle(e).color,bgOf(e));
+      if(r<4.5) out.contrast.push({theme:t,el:key,text:e.textContent.trim().slice(0,20),ratio:+r.toFixed(2)});
+    });
+  }
+  if(prev)de.setAttribute('data-theme',prev);else de.removeAttribute('data-theme');
+  const pre=document.createElement('pre'); pre.id='baton-layout';
+  pre.textContent=JSON.stringify(out);
+  document.body.appendChild(pre);
+},250);});
+</script>"""
+
+
 def chrome():
     for c in CHROME_CANDIDATES:
         if c and Path(c).exists():
@@ -145,6 +190,40 @@ def main():
     for x in r["cjk"]:      problems.append(f"fig {x['fig']} [{x['lang']}]: CJK at {x['size']}px (<12): '{x['text'][:40]}'")
     for i in r["blank"]:    problems.append(f"step {i}: renders blank")
     if r["objectObject"]:   problems.append("'[object Object]' appears on the page")
+    # -- pass 1b: phone widths, both themes --------------------------------
+    # Headless Chrome will not open a window narrower than 500px, so the
+    # page runs in a same-origin (srcdoc) iframe of the width under test —
+    # which is also how a host embeds it.
+    inner = variant(src, FREEZE_CSS + SHOW_ALL_CSS, LAYOUT_JS)
+    for width in (320, 390):
+        lay = tmp / f"layout-{width}.html"
+        lay.write_text(
+            f'<!doctype html><body style="margin:0"><iframe id="f" style="width:{width}px;'
+            f'height:900px;border:0" srcdoc="{htmlmod.escape(inner, quote=True)}"></iframe>'
+            "<script>const t=setInterval(()=>{const d=document.getElementById('f').contentDocument;"
+            "const r=d&&d.getElementById('baton-layout');if(!r)return;clearInterval(t);"
+            "const p=document.createElement('pre');p.id='baton-layout';p.textContent=r.textContent;"
+            "document.body.appendChild(p);},50);</script></body>")
+        dom = subprocess.run([bin_, "--headless=new", "--disable-gpu",
+                              "--window-size=800,1000",
+                              "--virtual-time-budget=5000", "--dump-dom",
+                              lay.resolve().as_uri()],
+                             capture_output=True, text=True, timeout=120).stdout
+        m = re.search(r'<pre id="baton-layout">(.*?)</pre>', dom, re.S)
+        if not m:
+            problems.append(f"{width}px: layout checker never ran")
+            continue
+        L = json.loads(htmlmod.unescape(m.group(1)))
+        if L["hscroll"]:
+            problems.append(f"{width}px: the page scrolls sideways by {L['hscroll']}px — "
+                            f"first overflowing: {', '.join(L['offenders']) or '?'}")
+        if width == 320:   # theme checks do not depend on width
+            for x in L["contrast"]:
+                problems.append(f"[{x['theme']}] {x['el']} '{x['text']}' is {x['ratio']}:1 "
+                                "against its background (< 4.5:1)")
+            for x in L["scheme"]:
+                problems.append(f"[{x['theme']}] root color-scheme is '{x['colorScheme']}' — "
+                                "scrollbars and controls will not follow the theme")
     steps = r.get("steps", 0)
     fig_steps = r.get("figSteps", [])
 

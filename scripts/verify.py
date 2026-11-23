@@ -262,8 +262,15 @@ def check_components(data):
                 problems.append(f'"{name}": no proof — list the tests, CI runs, live checks or reproductions '
                                 'that show the AFTER, with "state": verified | code-only | absent')
             for pr in proof:
-                if pr.get("state", "verified") not in PROOF_STATES:
-                    problems.append(f'"{name}": proof state "{pr.get("state")}" is not one of {sorted(PROOF_STATES)}')
+                # No default: a chip whose author never said what it proves must
+                # not read as verified (or as anything else) by omission.
+                label = _en(pr.get("label"))[:50] or "(no label)"
+                if "state" not in pr or pr.get("state") in (None, ""):
+                    problems.append(f'"{name}": proof chip "{label}" has no `state` — set it explicitly to '
+                                    f'one of {sorted(PROOF_STATES)}; a missing state is never read as verified')
+                elif pr["state"] not in PROOF_STATES:
+                    problems.append(f'"{name}": proof chip "{label}" state "{pr["state"]}" is not one of '
+                                    f'{sorted(PROOF_STATES)}')
         elif k == "compare":
             rows = s.get("rows") or []
             if len(rows) > 6:
