@@ -30,7 +30,11 @@ HOSTILE = ["javascript:alert(1)", "JaVaScRiPt:alert(1)", "data:text/html,<script
            f"https://github.com:0443/o/r/blob/{SHA}/a.go#L1", f"https://github%2ecom/o/r/blob/{SHA}/a.go#L1",
            f"https://\uff47ithub.com/o/r/blob/{SHA}/a.go#L1", f"https://github.com/o/r/blob/{SHA}/../main/a.go",
            f"https://github.com/o/r/blob/{SHA}/%2e%2e/main/a.go", f"https://github.com/o/r/blob/{SHA}\\..\\main/a.go",
-           "https://evil.example/a/.", "https://.evil.example/a", "https://evil..example/a"]
+           "https://evil.example/a/.", "https://.evil.example/a", "https://evil..example/a",
+           # GitHub folds // and decodes %xx in the path
+           f"https://github.com//evil/baton/blob/{SHA}/a.go#L1", f"https://github.com/evil//baton/blob/{SHA}/a.go#L1",
+           f"https://github.com/o/r//blob/main/a.go#L1", "https://github.com/o/r/bl%6fb/main/a.go#L1",
+           f"https://github.com/o/r/blob/{SHA}/a%2fb.go#L1", "https://docs.example.com/a//b"]
 
 
 def chain(heading):
@@ -225,6 +229,9 @@ class VerifyFailures(unittest.TestCase):
                          ("https://github.com/o/r/blob/main/a.go#L1", "not pinned"),
                          ("https://www.github.com/o/r/blame/main/a.go#L1", "not pinned"),
                          ("https://github.com/o/r/tree/main/a", "not a GitHub file permalink"),
+                         ("https://raw.githubusercontent.com/o/r/main/a.go", "raw GitHub link not pinned"),
+                         ("https://github.com/o/r/edit/main/a.go", "not a GitHub file permalink"),
+                         (f"https://raw.githubusercontent.com/o/r/{SHA}/a.go", None),
                          (f"https://github.com/o/r/blob/{SHA}/a.go#Lx", "not a GitHub file permalink")):
             p = packet()
             p["sections"][1]["failures"][0]["ref"] = ref
@@ -275,8 +282,7 @@ def page_fns(calls):
     src = (ROOT / "templates" / "packet.html").read_text()
     parts = [re.search(r"  const E = .*?\n(?=\n)", src, re.S).group(0),
              re.search(r"  function safeHref\(u\)\{.*?\n  \}\n", src, re.S).group(0),
-             re.search(r"  const REF_HOST=.*?\n", src).group(0),
-             re.search(r"  const DOT_SEG=.*?\n", src).group(0),
+             "".join(re.findall(r"  const (?:REF_HOST|DOT_SEG|EMPTY_SEG|GITHUB_HOST|GITHUB_ESC)=.*?\n", src)),
              re.search(r"  function safeRef\(u\)\{.*?\n  \}\n", src, re.S).group(0),
              re.search(r"  function refLabel\(u\)\{.*?\n  \}\n", src, re.S).group(0)]
     js = "\n".join(parts).replace("const ", "var ") + "\nconsole.log(JSON.stringify(" + calls + "));"
@@ -297,11 +303,14 @@ class PageRefRule(unittest.TestCase):
     def test_labels(self):
         out = page_fns(json.dumps([REF, f"https://github.com/o/r/blob/{SHA}/a/b.py#L7C2-L9C1",
                                     f"https://www.github.com/o/r/blame/{SHA}/c.md?plain=1#L5",
+                                    "https://github.com/o/r/pull/12345/files",
                                     "https://firebase.google.com/docs/cloud-messaging/manage-tokens"]) +
                        ".map(refLabel)")
+        out = [x.replace("\u2060", "") for x in out]
         self.assertEqual(out[:2], ["example/notes-api · worker.go:40–58", "o/r · b.py:7–9"])
         self.assertEqual(out[2], "o/r · c.md:5")
-        self.assertTrue(out[3].startswith("firebase.google.com/…"), out[3])
+        self.assertEqual(out[3], "o/r · pull/12345/files")    # any GitHub link leads with owner/repo
+        self.assertTrue(out[4].startswith("firebase.google.com/…"), out[4])
 
 
 PROBE = """<script>
@@ -380,7 +389,7 @@ class RenderedFailures(unittest.TestCase):
         for r in refs:
             self.assertTrue(r["href"].startswith("https://"), r)
             self.assertEqual((r["target"], r["rel"]), ("_blank", "noopener noreferrer"))
-        self.assertEqual(refs[1]["text"], "example/notes-api · worker.go:40–58")
+        self.assertEqual(refs[1]["text"].replace("\u2060", ""), "example/notes-api · worker.go:40–58")
 
     def test_hostile_refs_render_as_text(self):
         self.assertEqual(self.out["refused"].count("link refused"), self.n_hostile)
@@ -416,6 +425,50 @@ class RenderedFailures(unittest.TestCase):
         self.assertEqual(self.out["pressed"], ["fcm"])
         self.assertTrue(self.out["controls"])
         self.assertEqual(self.out["cleared"], 0)      # a second click clears the mark
+
+
+LONG_REF = ("https://github.com/a-very-long-organisation-name/an-even-longer-repository-name-here/blob/"
+            f"{SHA}/services/notifications/push/delivery/worker_retry_policy_handler.go#L1200-L1288")
+LONG_METRIC = ("notifications_push_delivery_worker_retry_policy_handler_unregistered_token_errors_total"
+               '{code="UNREGISTERED",region="eu-west-1"}')
+
+
+@unittest.skipUnless(CHROME, "no Chrome")
+class LongValuesOnPhones(unittest.TestCase):
+    """A long permalink and a long metric name never scroll the page sideways:
+    snapshot.py's layout pass (320 and 390 px among others, both themes) must
+    report nothing."""
+
+    def test_snapshot_passes_with_long_ref_and_metric(self):
+        spec = packet()
+        rows = spec["sections"][1]["failures"]
+        rows.append(dict(rows[2], ref=LONG_REF, detect={"en": "`" + LONG_METRIC + "`"}))
+        rows.append(dict(rows[0], ref="https://docs.example.com/" + "x" * 160,
+                         detect={"en": LONG_METRIC.split("{")[0]}))
+        spec["context"] = "Say you do not know. " * 100 + "\n## Boundary review\n"
+        tmp = Path(tempfile.mkdtemp(prefix="baton-fm-long-"))
+        (tmp / "p.json").write_text(json.dumps(spec))
+        subprocess.run([sys.executable, str(ROOT / "scripts" / "render.py"), str(tmp / "p.json"),
+                        "-o", str(tmp / "p.html")], check=True, capture_output=True)
+        r = subprocess.run([sys.executable, str(ROOT / "scripts" / "snapshot.py"), str(tmp / "p.html"),
+                            "-o", str(tmp / "shots")], capture_output=True, text=True, timeout=600)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertNotIn("sideways", r.stdout)
+        # Above the card breakpoint the table fits its card: State is never pushed
+        # into the table's own sideways scroll, even with the long owner/repo.
+        page = (tmp / "p.html").read_text()
+        probe = ("<script>window.addEventListener('load',()=>{document.getElementById('next').click();"
+                 "setTimeout(()=>{const t=document.querySelector('.fmodes .tscroll');const p=document.createElement('pre');"
+                 "p.id='fit';p.textContent=t.scrollWidth-t.clientWidth;document.body.appendChild(p);},300)});</script></body>")
+        head, _, tail = page.rpartition("</body>")
+        (tmp / "fit.html").write_text(head + probe + tail)
+        for w in (905, 1024, 1280):
+            dom = subprocess.run([CHROME, "--headless=new", "--disable-gpu", "--virtual-time-budget=3000",
+                                  f"--window-size={w},1500", "--dump-dom", (tmp / "fit.html").as_uri()],
+                                 capture_output=True, text=True, timeout=120).stdout
+            m = re.search(r'<pre id="fit">(-?\d+)</pre>', dom)
+            self.assertIsNotNone(m, w)
+            self.assertLessEqual(int(m.group(1)), 0, f"{w}px: the table scrolls inside its card")
 
 
 if __name__ == "__main__":

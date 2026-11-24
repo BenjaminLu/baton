@@ -102,10 +102,13 @@ Clicking a system or link on the map highlights its rows.
 - `ref` is `https://` only and opens in a new tab through the page's link
   sanitizer (`rel="noopener noreferrer"`). The host must be the one the
   browser opens: plain ASCII, no port, trailing dot, userinfo or
-  percent-escape, and no backslash or `.` / `..` segment anywhere. A GitHub
-  `blob` / `blame` / `raw` link must be pinned to a commit SHA, never a
-  branch; the page labels it `owner/repo · file:La–Lb`, so a fork cannot pass
-  for the real repository.
+  percent-escape, and no backslash, empty (`//`) or `.` / `..` segment
+  anywhere; a GitHub path carries no `%` escape (GitHub folds `//` and
+  decodes `%xx`, which would open a fork or a branch the checks never saw). A
+  GitHub `blob` / `blame` / `raw` link, or a `raw.githubusercontent.com`
+  one, must be pinned to a commit SHA, never a branch; the page labels it
+  `owner/repo · file:La–Lb`, and any other GitHub link also leads with
+  `owner/repo`, so a fork cannot pass for the real repository.
 - `finding` names a pin on the **same** boundary (`at` equal to the row's).
 - Required on the `engineer` register (`verify.py` fails a boundary section
   without the key; on `eli5` it warns). `[]` is allowed and warns for each

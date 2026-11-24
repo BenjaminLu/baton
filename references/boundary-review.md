@@ -125,7 +125,8 @@ walk the modes below and keep each one that can happen there:
 wrong lines is worse than none. A branch link (`/blob/main/…`) drifts the day
 it is written, so it fails `verify.py`, and so does a ref whose host is not
 the one the browser opens (a port, a trailing dot, userinfo, a
-percent-escape, a backslash or a `..` segment). The page shows a GitHub ref
+percent-escape, a backslash, an empty `//` or a `..` segment, or a `%` escape
+in a GitHub path). The page shows a GitHub ref
 as `owner/repo · file:La–Lb`: check the repository is the real one, not a
 fork.
 

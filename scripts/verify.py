@@ -345,13 +345,17 @@ def check_boundary_review(html, data):
 
 
 FAILURE_STATES = {"handled", "detected", "unhandled"}
-GITHUB_CODE = re.compile(r"(?ai)^https://(?:www\.)?github\.com/[^/]+/[^/]+/(?:blob|blame|tree|raw)/")
+GITHUB_CODE = re.compile(r"(?ai)^https://(?:www\.)?github\.com/[^/]+/[^/]+/(?:blob|blame|tree|raw|edit|commits|history)/")
+GITHUB_HOST = re.compile(r"(?ai)^https://(?:(?:www\.)?github\.com|raw\.githubusercontent\.com)(?=[/?#]|$)")
+GITHUB_RAW = re.compile(r"(?ai)^https://raw\.githubusercontent\.com/[^/]+/[^/]+/([^/]+)/")
 GITHUB_BLOB = re.compile(r"(?ai)^https://(?:www\.)?github\.com/([^/]+/[^/]+)/(?:blob|blame|raw)/([^/]+)/[^#]+"
                          r"(#L\d+(?:C\d+)?(?:-L\d+(?:C\d+)?)?)?$")
 
 
 REF_HOST = re.compile(r"(?ai)^https://[a-z0-9-]+(?:\.[a-z0-9-]+)*(?=[/?#]|$)")
 DOT_SEG = re.compile(r"(?ai)/(?:\.|%2e){1,2}(?=[/?#]|$)")
+EMPTY_SEG = re.compile(r"(?ai)^https://[^/?#]+[^?#]*//")       # GitHub folds // away
+GITHUB_ESC = re.compile(r"(?ai)^https://[^/?#]+[^?#%]*%")       # and decodes %xx in the path
 
 
 def safe_ref(url):
@@ -363,6 +367,10 @@ def safe_ref(url):
     # ASCII labels only, no port, trailing dot, userinfo or percent-escape; no
     # backslash; no dot segment that would fold /blob/<sha>/../main/ away.
     if re.search(r"[\"'<>`\\]", url) or not REF_HOST.match(url) or DOT_SEG.search(url):
+        return None
+    # GitHub serves /o//r/blob/… and /o/r/bl%6fb/… as the plain path, which would
+    # slip a fork or a branch past the pin check and the owner/repo label.
+    if EMPTY_SEG.search(url) or (GITHUB_HOST.match(url) and GITHUB_ESC.search(url)):
         return None
     return url
 
@@ -450,6 +458,10 @@ def check_failures(data, register="engineer"):
                                 "refuses it (no other scheme, control character, space or raw quote)")
             else:
                 m = GITHUB_BLOB.match(ref)
+                raw = GITHUB_RAW.match(ref)
+                if raw and not re.fullmatch(r"(?ai)[0-9a-f]{7,40}", raw.group(1)):
+                    problems.append(f"{label}: `ref` is a raw GitHub link not pinned to a commit — use "
+                                    "raw.githubusercontent.com/<owner>/<repo>/<sha>/<path>")
                 if GITHUB_CODE.match(ref):
                     if not m:
                         problems.append(f"{label}: `ref` is not a GitHub file permalink — use "
