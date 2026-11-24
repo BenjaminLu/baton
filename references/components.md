@@ -14,7 +14,7 @@ that fits, never by trimming words until the counter stops.
 | you are showing | component | limits |
 |---|---|---|
 | a change, a fix, a claim, a failure path | `chain` | 3–6 nodes, code labels ≤ 24 chars, hop labels ≤ 16 |
-| where systems meet, what is wrong there, and how each one fails | `boundary` (always last) | ≥ 2 systems, every pin links a `chain`, a `failures` row per failure mode |
+| where systems meet, what is wrong there, and how each one fails | `boundary` (always last) | ≥ 2 systems, every pin links a `chain`, a `failures` row per failure mode, one `runbook` row per failure id |
 | old vs new, option vs option | `compare` | ≤ 6 rows of [dimension, from, to] |
 | cases × properties, claims × proof | `matrix` | ≤ 12 rows, one mark per cell |
 | an order of operations, a rollout | `steps` | 3–5 steps |
@@ -79,26 +79,45 @@ green: checked and fine. See `boundary-review.md` for how findings are chosen.
  "findings":[{"n":1,"at":"res" | "res>dev","lens":"coexist","tone":"warn",
               "title":i18n,"card":"<en heading of the chain card that draws it>"}],
  "ok":i18n,                                   // only when findings is empty
- "failures":[{"at":"push>fcm",               // a system id, or "a>b" for a link the map draws (a next to b)
-              "mode":i18n,                    // what fails
-              "detect":i18n,                  // the signal before a user complains; omit → "no signal today"
-              "impact":i18n,                  // what the user sees
-              "action":i18n,                  // the runbook step
+ "failures":[{"id":"fcm-unregistered",       // the key the runbook cites: [A-Za-z0-9][A-Za-z0-9_.-]*, ≤ 64, unique
+              "at":"push>fcm",               // a system id, or "a>b" for a link the map draws (a next to b)
+              "mode":i18n,                    // what fails, one line
               "ref":"https://github.com/<owner>/<repo>/blob/<sha>/<path>#L12-L18",  // omit → "no code reference"
               "state":"handled|detected|unhandled",
               "introduced":true,              // optional: this work opened the mode
               "finding":1,                    // the pin that draws it — required when introduced + unhandled
               "source":i18n,                  // proposal route: the document sentence it comes from
-              "planned":true}]}               // proposal route: the code does not exist yet
+              "planned":true}],               // proposal route: the code does not exist yet
+ "runbook":[{"failure":"fcm-unregistered",    // the failure id it answers, or a list of ids
+             "detect":i18n,                   // the signal before a user complains; omit → "no signal today"
+             "impact":i18n,                   // what the user sees
+             "action":i18n,                   // what on-call does
+             "symptom":i18n}]}                // optional; required when the row cites no failure id
 ```
 
-`failures` is the failure-mode table (`boundary-review.md` §3): exhaustive,
-one row per way a boundary fails, rendered under the map grouped by
-boundary as mode · signal · user impact · runbook · evidence · state.
-Clicking a system or link on the map highlights its rows.
+One home per fact. `failures` is the failure-mode list (`boundary-review.md`
+§3): exhaustive, one row per way a boundary fails, rendered under the map
+grouped by boundary as id · mode · evidence · state — no detection or action
+prose on the map. `runbook` is the only place `detect`, `impact` and `action`
+are written: one row per failure id, rendered after the failure modes in the
+same order as signal · what the user sees · what to do. The id on a map row is
+a link to its runbook row; ↑ on a runbook row returns to the mode on the map
+(in-page links: Tab and Enter reach them, and the target row takes focus).
+Clicking a system or link on the map highlights its failure rows and their
+runbook rows.
 
+- Every failure id is cited by exactly one runbook row; every id a runbook
+  row cites is a failure on the map (`verify.py` fails either break, and a
+  `detect` / `impact` / `action` left on a failure row that a runbook row
+  cites as well).
+- A runbook row without `detect` prints "no signal today" and `verify.py`
+  warns; it never fails.
+- **Older packets** — failure rows with no `id` that carry `detect` / `impact`
+  / `action` themselves — render unchanged in substance: the page numbers
+  each `#<position>` and moves the three fields into a generated runbook row.
+  `verify.py` passes them with a warning to migrate.
 - `state` is one of `handled` (needs `ref` or, on a proposal, `source`),
-  `detected` (needs `detect`), `unhandled`. No default.
+  `detected` (needs `detect` in its runbook row), `unhandled`. No default.
 - `ref` is `https://` only, at most 2048 characters, and opens in a new tab through the page's link
   sanitizer (`rel="noopener noreferrer"`). The host must be the one the
   browser opens: plain ASCII, no port, trailing dot, userinfo or

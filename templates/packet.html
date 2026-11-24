@@ -454,7 +454,7 @@ button.act:disabled{opacity:.4;cursor:default}
 .bok{margin-top:1rem;border:1px solid var(--ok);border-left:4px solid var(--ok);border-radius:6px;padding:.7rem .9rem;
   line-height:1.55}
 .bok::before{content:"✓ ";color:var(--ok);font-weight:700}
-/* failure modes under the map: one compact table per boundary — the runbook */
+/* failure modes under the map (one compact table per boundary), then the runbook */
 .fmodes{margin-top:1.4rem;border-top:1px solid var(--rule);padding-top:1rem}
 .fmodes>h4{font-family:var(--serif);font-size:1.12rem;font-weight:600;margin:0 0 .2rem}
 .fmodes>.fcap{margin:0 0 .9rem;font-size:.9rem;color:var(--muted);line-height:1.5}
@@ -473,7 +473,31 @@ table.fmt{width:100%;min-width:0;border-collapse:separate;border-spacing:0;font-
 table.fmt th{font-size:.74rem;font-weight:600;color:var(--muted);text-align:left;padding:.4rem .5rem;
   border-bottom:1px solid var(--rule-strong);vertical-align:bottom}
 table.fmt td{padding:.55rem .5rem;border-bottom:1px solid var(--rule);vertical-align:top;line-height:1.45;overflow-wrap:break-word}
-table.fmt td.mode{font-weight:600;width:15%} table.fmt td.ev{width:12rem} table.fmt td.st{width:7rem}
+table.fmt td.mode{font-weight:600} table.fmt td.ev{width:13rem} table.fmt td.st{width:7.5rem}
+table.fmt td.fid{width:12rem}
+table.fmt code.fidt{font-size:.78rem;overflow-wrap:anywhere;word-break:normal}
+/* The ID is the way into its runbook row; ↑ in the runbook is the way back. */
+a.fjump,a.fback{display:inline-flex;align-items:baseline;gap:.25rem;color:var(--link)!important;text-decoration:none!important;
+  border-radius:3px;min-height:1.5rem;padding:.05rem .1rem;max-width:100%}
+a.fjump code,a.fback code{color:inherit;text-decoration:underline dotted;text-underline-offset:2px}
+a.fjump:hover code,a.fback:hover code{text-decoration-style:solid}
+a.fjump:focus-visible,a.fback:focus-visible{outline:2px solid var(--link);outline-offset:1px}
+.fja{font-family:var(--sans);font-weight:700}
+.fnorb{display:block;font-size:.78rem}
+table.rbt td.rbfor{width:30%}
+.rbm{display:block} .rbm+.rbm{margin-top:.45rem}
+.rbmt{display:block;font-weight:600;margin-top:.1rem}
+.rbat{display:block;font-size:.78rem;color:var(--muted);margin-top:.1rem}
+.rbsym{display:block;margin-top:.35rem}
+.rbsl{font-family:var(--mono);font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+html:not(:lang(en)) .rbsl{text-transform:none;letter-spacing:.02em}
+table.rbt tr.on td{background:var(--accent-tint)}
+/* A row reached by a link takes focus: an accent ring, and a short tint that
+   says "here" (no tint under reduced motion, the ring is enough). */
+table.fmt tr[tabindex]:focus{outline:2px solid var(--accent);outline-offset:-2px}
+table.fmt tr.flash td{animation:fflash 1.6s ease-out}
+@keyframes fflash{from{background:var(--accent-tint)}to{background:transparent}}
+@media (prefers-reduced-motion:reduce){table.fmt tr.flash td{animation:none}}
 html:not(:lang(en)) table.fmt thead th{word-break:keep-all}
 table.fmt td code{word-break:normal;overflow-wrap:anywhere}
 table.fmt .ktag{margin-right:0;white-space:normal}
@@ -518,10 +542,16 @@ a.fref::after{content:"\00a0↗";font-family:var(--sans)}
   table.fmt tr[data-st] td:first-child{box-shadow:none;padding-left:0}
   table.fmt tr[data-st=handled]{border-left-color:var(--ok-ink)} table.fmt tr[data-st=detected]{border-left-color:var(--warn-ink)}
   table.fmt tr[data-st=unhandled]{border-left-color:var(--risk-ink)}
+  table.fmt:not(.rbt) tr:not(.fgh){display:flex;flex-direction:column}
+  table.fmt:not(.rbt) td.mode{order:-1}
   table.fmt td.mode{padding-right:7.5rem}
   table.fmt td.st{position:absolute;top:.55rem;right:.6rem;max-width:7rem;text-align:right}
+  table.rbt td.rbfor{width:auto}
+  table.rbt td.rbfor::before{display:none!important}
+  table.rbt tr.on{outline:2px solid var(--accent);outline-offset:1px}
+  table.rbt tr.on td{background:none}
   table.fmt td{border:0;padding:.2rem 0}
-  table.fmt td.mode{width:auto;font-size:.95rem} table.fmt td.ev,table.fmt td.st{width:auto}
+  table.fmt td.mode{width:auto;font-size:.95rem} table.fmt td.ev,table.fmt td.st,table.fmt td.fid{width:auto}
   table.fmt td:not(.mode)::before{content:attr(data-l);display:block;font-family:var(--mono);font-size:.66rem;
     letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
   table.fmt td.st::before{display:none!important}
@@ -531,7 +561,7 @@ html:not(:lang(en)) table.fmt td::before{text-transform:none!important;letter-sp
    so the title keeps the full card width. */
 @media (max-width:30rem){
   table.fmt tr:not(.fgh){display:flex;flex-direction:column}
-  table.fmt td.st{position:static;order:-1;max-width:none;text-align:left;padding:0 0 .1rem!important}
+  table.fmt td.st{position:static;order:-2;max-width:none;text-align:left;padding:0 0 .1rem!important}
   table.fmt td.mode{padding-right:0}
 }
 /* compare (from → to) */
@@ -871,12 +901,20 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
     proof:W3('Proof','證據','证据'), see:W3('see card','看卡片','看卡片'),
     verified:W3('verified','已驗證','已验证'), unknown:W3('state not given','未標示狀態','未标示状态'), 'code-only':W3('code only','只有程式碼','只有代码'),
     absent:W3('absent','沒有證據','没有证据'),
-    fmodes:W3('Failure modes — the runbook','失效模式與處置（runbook）','失效模式与处置（runbook）'),
-    fmcap:W3('Every way each boundary can fail: the signal that fires first, what the user sees, what on-call does. Select a system or link on the map to mark its rows.',
-             '每個邊界會怎麼壞：最先響的訊號、使用者看到什麼、on-call 要做什麼。點選地圖上的系統或連線，標出它的那幾列。',
-             '每个边界会怎么坏：最先响的信号、用户看到什么、on-call 要做什么。点击地图上的系统或连线，标出它的那几行。'),
+    fmodes:W3('Failure modes','失效模式','失效模式'),
+    fmcap:W3('Every way each boundary can fail, and whether it is handled. An ID opens its runbook row. Select a system or link on the map to mark its rows.',
+             '每個邊界會怎麼壞、有沒有處理。點 ID 跳到它的處置列；點選地圖上的系統或連線，標出它的那幾列。',
+             '每个边界会怎么坏、有没有处理。点 ID 跳到它的处置行；点击地图上的系统或连线，标出它的那几行。'),
+    rbook:W3('Runbook','處置手冊（runbook）','处置手册（runbook）'),
+    rbcap:W3('One row per failure mode: the signal that fires before a user notices, what the user sees, what on-call does. ↑ returns to the mode on the map.',
+             '每種失效一列：使用者發現前會響的訊號、使用者看到什麼、on-call 要做什麼。↑ 回到地圖上的那一列。',
+             '每种失效一行：用户发现前会响的信号、用户看到什么、on-call 要做什么。↑ 回到地图上的那一行。'),
+    fid:W3('ID','ID','ID'), rbfor:W3('Failure mode','失效模式','失效模式'),
+    tork:W3('runbook row','處置列','处置行'), tomap:W3('back to the map','回到地圖','回到地图'),
+    norb:W3('no runbook row','沒有處置列','没有处置行'), notmap:W3('not on the map','地圖上沒有','地图上没有'),
+    rbsym:W3('symptom','症狀','症状'),
     fmode:W3('Failure mode','失效模式','失效模式'), fdetect:W3('Signal before a user notices','使用者發現前的訊號','用户发现前的信号'),
-    fimpact:W3('What the user sees','使用者看到什麼','用户看到什么'), faction:W3('Runbook','處置（runbook）','处置（runbook）'),
+    fimpact:W3('What the user sees','使用者看到什麼','用户看到什么'), faction:W3('What to do','怎麼處理','怎么处理'),
     fref:W3('Evidence','證據','证据'), fstate:W3('State','狀態','状态'),
     'fs-handled':W3('handled','已處理','已处理'), 'fs-detected':W3('detected, not handled','有偵測、未處理','有检测、未处理'),
     'fs-unhandled':W3('unhandled','未處理','未处理'), 'fs-unknown':W3('state not given','未標示狀態','未标示状态'),
@@ -975,7 +1013,7 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
       if(String(f.at).includes('>')){ const a=String(f.at).split('>')[0]; if(ix[a]!=null) lb[ix[a]]=(lb[ix[a]]||'')+b; }
       else nb[f.at]=(nb[f.at]||'')+b;
     });
-    const FM=Array.isArray(s.failures)?s.failures.filter(f=>f&&typeof f==='object'&&!Array.isArray(f)):[];
+    const M=failureModel(s); const FM=M.FM.map(m=>m.f);
     const fmAt=Object.create(null); FM.forEach(f=>{ const k=String(f.at==null?'':f.at); fmAt[k]=(fmAt[k]||0)+1; });
     const nm=Object.create(null); (s.systems||[]).forEach(n=>nm[n.id]=pick(n.name,lang));
     const fmName=k=>pick(KL.fmFor,lang)+String(k).split('>').map(x=>nm[x]!=null?nm[x]:x).join(' → ');
@@ -993,7 +1031,32 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
     } else {
       h+='<div class="bok">'+rich(pick(s.ok,lang))+'</div>';
     }
-    return h+failuresHTML(s, FM, lang);
+    return h+failuresHTML(s, M, lang)+runbookHTML(s, M, lang);
+  }
+  // One home per fact (boundary-review.md §3). A failure mode on the map is
+  // id · at · mode · state · evidence; what detects it, what the user sees and
+  // what to do live in the one runbook row that cites its id. A packet written
+  // before ids and the runbook still draws: a mode without an id is numbered
+  // "#<position>" (a character no authored id may hold), and the detect /
+  // impact / action it carries become its generated runbook row.
+  // verify.py runbook_of() is the same rule.
+  const FID=/^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$/;
+  const RBF=['detect','impact','action'];
+  const isObj=x=>!!x&&typeof x==='object'&&!Array.isArray(x);
+  const own=(o,k)=>Object.prototype.hasOwnProperty.call(o,k);
+  function failureModel(s){
+    const raw=Array.isArray(s.failures)?s.failures:[]; const book=Array.isArray(s.runbook)?s.runbook:[];
+    const FM=[]; raw.forEach((f,i)=>{ if(!isObj(f)) return; const ok=typeof f.id==='string'&&FID.test(f.id);
+      FM.push({f, id:ok?f.id:'#'+(i+1), authored:ok, rb:null}); });
+    const cites=r=>typeof r.failure==='string'?[r.failure]:Array.isArray(r.failure)?r.failure.filter(x=>typeof x==='string'):[];
+    const RB=[]; const cited=new Set();
+    book.forEach(r=>{ if(!isObj(r)) return; const c=cites(r); c.forEach(x=>cited.add(x)); RB.push({r, ids:c, gen:false}); });
+    FM.forEach(m=>{ if((!m.authored||!cited.has(m.id)) && RBF.some(k=>own(m.f,k))){
+      const r={}; RBF.forEach(k=>{ if(own(m.f,k)) r[k]=m.f[k]; }); RB.push({r, ids:[m.id], gen:true}); } });
+    const byId=new Map(); FM.forEach(m=>{ if(!byId.has(m.id)) byId.set(m.id,m); });
+    RB.forEach((x,j)=>{ x.modes=x.ids.map(id=>{ const m=byId.get(id); return m&&(m.authored||x.gen)?m:null; });
+      x.modes.forEach(m=>{ if(m&&m.rb==null) m.rb=x; }); });
+    return {FM, RB};
   }
   // The failure-mode table (boundary-review.md §3): every mode of every
   // boundary, grouped in map order. Evidence links pass the same default-deny
@@ -1041,65 +1104,128 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
     return h;
   }
   const FSTATE=Object.assign(Object.create(null),{handled:'ok',detected:'warn',unhandled:'risk'});
-  function failuresHTML(s, FM, lang){
-    if(!FM.length) return '';
+  const stOf=f=>(typeof f.state==='string'&&FSTATE[f.state])?f.state:'unknown';
+  const RANK=Object.assign(Object.create(null),{unhandled:0,detected:1,handled:2});
+  const rankOf=f=>(typeof f.state==='string'&&f.state in RANK)?RANK[f.state]:-1;
+  const atOf=f=>String(f.at==null?'':f.at);
+  // Systems and links in map order; a mode's boundary as the reader names it.
+  function boundaryOrder(s, lang){
     const sys=s.systems||[]; const name=Object.create(null); sys.forEach(n=>name[n.id]=pick(n.name,lang));
     const order=[]; sys.forEach((n,i)=>{ order.push(String(n.id)); if(i<sys.length-1) order.push(n.id+'>'+sys[i+1].id); });
-    const keys=[...new Set(FM.map(f=>String(f.at==null?'':f.at)))]
-      .sort((a,b)=>(order.indexOf(a)<0?1e9:order.indexOf(a))-(order.indexOf(b)<0?1e9:order.indexOf(b)));
-    const label=k=>k.includes('>')?k.split('>').map(x=>name[x]!=null?name[x]:x).join(' →\u00a0'):(name[k]!=null?name[k]:k);
-    const C=['fmode','fdetect','fimpact','faction','fref','fstate'].map(c=>pick(KL[c],lang));
+    const pos=k=>order.indexOf(k)<0?1e9:order.indexOf(k);
+    const label=k=>k.includes('>')?k.split('>').map(x=>name[x]!=null?name[x]:x).join(' → '):(name[k]!=null?name[k]:k);
+    return {pos, label};
+  }
+  // The modes as the map table draws them: boundary by boundary in map order,
+  // worst first inside one (unhandled, then detected, then handled).
+  function mapOrder(s, M, lang){
+    const B=boundaryOrder(s, lang);
+    const keys=[...new Set(M.FM.map(m=>atOf(m.f)))].sort((a,b)=>B.pos(a)-B.pos(b));
+    return {B, groups:keys.map(k=>[k, M.FM.map((m,i)=>[m,i]).filter(x=>atOf(x[0].f)===k)
+      .sort((a,b)=>rankOf(a[0].f)-rankOf(b[0].f)||a[1]-b[1]).map(x=>x[0])])};
+  }
+  const secOf=s=>secs.indexOf(s);
+  const fmDom=(s,M,m)=>'fm-'+secOf(s)+'-'+M.FM.indexOf(m);
+  const rbDom=(s,M,x)=>'rb-'+secOf(s)+'-'+M.RB.indexOf(x);
+  const breakAt=h=>softBreaks(h).split(/(<[^>]*>)/).map((t,i)=>i%2?t:t.replace(/[{,=]/g,'$&<wbr>')).join('');
+  function failuresHTML(s, M, lang){
+    if(!M.FM.length) return '';
+    const O=mapOrder(s, M, lang);
+    const C=['fid','fmode','fref','fstate'].map(c=>pick(KL[c],lang));
     let h='<div class="fmodes"><h4>'+pick(KL.fmodes,lang)+'</h4><p class="fcap">'+pick(KL.fmcap,lang)+'</p>';
     // One table, one <tbody> per boundary: the columns line up down the whole list.
     h+=tscroll(KL.fmodes,lang)+'<table class="fmt" role="table"><thead role="rowgroup"><tr role="row">'+C.map(c=>'<th scope="col" role="columnheader">'+E(c)+'</th>').join('')+'</tr></thead>';
-    keys.forEach(k=>{
-      // Worst first inside a boundary: unhandled, then detected, then handled.
-      const RANK=Object.assign(Object.create(null),{unhandled:0,detected:1,handled:2});
-      const rank=f=>(typeof f.state==='string'&&f.state in RANK)?RANK[f.state]:-1;
-      const rows=FM.filter(f=>String(f.at==null?'':f.at)===k).map((f,i)=>[f,i])
-        .sort((a,b)=>rank(a[0])-rank(b[0])||a[1]-b[1]).map(x=>x[0]);
-      const cnt=Object.create(null); rows.forEach(f=>{ const st=(typeof f.state==='string'&&FSTATE[f.state])?f.state:'unknown'; cnt[st]=(cnt[st]||0)+1; });
-      h+='<tbody class="fgroup" role="rowgroup" data-fg="'+E(k)+'"><tr class="fgh" role="row"><th colspan="6" scope="rowgroup" role="rowheader"><span class="fgn">'+
-        softBreaks(rich(label(k)))+'</span><span class="fct">'+
+    O.groups.forEach(([k,rows])=>{
+      const cnt=Object.create(null); rows.forEach(m=>{ const st=stOf(m.f); cnt[st]=(cnt[st]||0)+1; });
+      h+='<tbody class="fgroup" role="rowgroup" data-fg="'+E(k)+'"><tr class="fgh" role="row"><th colspan="4" scope="rowgroup" role="rowheader"><span class="fgn">'+
+        softBreaks(rich(O.B.label(k)))+'</span><span class="fct">'+
         ['unhandled','detected','handled','unknown'].filter(x=>cnt[x]).map(x=>cnt[x]+' '+pick(KL['fs-'+x],lang)).join(' · ')+
         '</span></th></tr>';
-      rows.forEach(f=>{
-        const st=(typeof f.state==='string'&&FSTATE[f.state])?f.state:'unknown';
+      rows.forEach(m=>{
+        const f=m.f; const st=stOf(f);
         const pin=f.finding!=null?'<span class="badge '+E(((s.findings||[]).find(x=>x&&x.n===f.finding)||{}).tone||'warn')+
           '" title="'+E(pick(KL.fpin,lang)+' '+f.finding)+'">'+E(f.finding)+'</span>':'';
-        const d=pick(f.detect,lang);
-        h+='<tr role="row" data-st="'+st+'"><td role="cell" class="mode" data-l="'+E(C[0])+'">'+rich(pick(f.mode,lang))+pin+
+        const idh='<code class="fidt">'+softBreaks(E(m.id))+'</code>';
+        const jump=m.rb?'<a class="fjump" href="#'+rbDom(s,M,m.rb)+'" data-jump="'+rbDom(s,M,m.rb)+'" aria-label="'+
+            E(m.id+' — '+pick(KL.tork,lang))+'">'+idh+'<span class="fja" aria-hidden="true">↓</span></a>':
+          idh+'<span class="nosig fnorb">'+pick(KL.norb,lang)+'</span>';
+        h+='<tr role="row" data-st="'+st+'" id="'+fmDom(s,M,m)+'" tabindex="-1" data-at="'+E(k)+'">'+
+          '<td role="cell" class="fid" data-l="'+E(C[0])+'">'+jump+'</td>'+
+          '<td role="cell" class="mode" data-l="'+E(C[1])+'">'+rich(pick(f.mode,lang))+pin+
           (f.planned?'<span class="fplan">'+pick(KL.fplan,lang)+'</span>':'')+'</td>'+
-          '<td role="cell" data-l="'+E(C[1])+'">'+(String(d).trim()?softBreaks(rich(d)).split(/(<[^>]*>)/).map((t,i)=>i%2?t:t.replace(/[{,=]/g,'$&<wbr>')).join(''):'<span class="nosig">'+pick(KL.nosig,lang)+'</span>')+'</td>'+
-          '<td role="cell" data-l="'+E(C[2])+'">'+rich(pick(f.impact,lang))+'</td>'+
-          '<td role="cell" data-l="'+E(C[3])+'">'+rich(pick(f.action,lang))+'</td>'+
-          '<td role="cell" class="ev" data-l="'+E(C[4])+'">'+refHTML(f,lang)+'</td>'+
-          '<td role="cell" class="st" data-l="'+E(C[5])+'"><span class="ktag '+(FSTATE[st]||'')+'">'+pick(KL['fs-'+st],lang)+'</span></td></tr>';
+          '<td role="cell" class="ev" data-l="'+E(C[2])+'">'+refHTML(f,lang)+'</td>'+
+          '<td role="cell" class="st" data-l="'+E(C[3])+'"><span class="ktag '+(FSTATE[st]||'')+'">'+pick(KL['fs-'+st],lang)+'</span></td></tr>';
       });
       h+='</tbody>';
     });
     return h+'</table></div></div>';
   }
-  // Clicking a system or link on the map marks its failure-mode rows; a
-  // second click on the same one clears the mark.
+  // The runbook: the single home of detect, impact and action. Rows follow
+  // the map table's order; a row that cites no mode on the map comes last.
+  function runbookHTML(s, M, lang){
+    if(!M.RB.length) return '';
+    const O=mapOrder(s, M, lang);
+    const seq=new Map(); O.groups.forEach(([,rows])=>rows.forEach(m=>seq.set(m,seq.size)));
+    const first=x=>Math.min(1e9,...x.modes.filter(Boolean).map(m=>seq.get(m)));
+    const rows=M.RB.map((x,j)=>[x,j]).sort((a,b)=>first(a[0])-first(b[0])||a[1]-b[1]).map(x=>x[0]);
+    const C=['rbfor','fdetect','fimpact','faction'].map(c=>pick(KL[c],lang));
+    let h='<div class="fmodes rbook"><h4>'+pick(KL.rbook,lang)+'</h4><p class="fcap">'+pick(KL.rbcap,lang)+'</p>';
+    h+=tscroll(KL.rbook,lang)+'<table class="fmt rbt" role="table"><thead role="rowgroup"><tr role="row">'+C.map(c=>'<th scope="col" role="columnheader">'+E(c)+'</th>').join('')+'</tr></thead><tbody role="rowgroup">';
+    rows.forEach(x=>{
+      const r=x.r; const ms=x.modes.filter(Boolean);
+      // The row wears the worst state of the modes it handles.
+      const worst=ms.map(m=>m.f).sort((a,b)=>rankOf(a)-rankOf(b))[0];
+      const st=worst?stOf(worst):'unknown';
+      const who=x.ids.map((id,i)=>{ const m=x.modes[i];
+        if(!m) return '<span class="rbm"><code class="fidt">'+softBreaks(E(id))+'</code> <span class="noref">'+pick(KL.notmap,lang)+'</span></span>';
+        return '<span class="rbm"><a class="fback" href="#'+fmDom(s,M,m)+'" data-jump="'+fmDom(s,M,m)+'" aria-label="'+
+          E(m.id+' — '+pick(KL.tomap,lang))+'"><span aria-hidden="true">↑ </span><code class="fidt">'+softBreaks(E(m.id))+'</code></a> '+
+          '<span class="rbmt">'+rich(pick(m.f.mode,lang))+'</span><span class="rbat">'+softBreaks(rich(O.B.label(atOf(m.f))))+'</span></span>'; }).join('');
+      const sym=String(pick(r.symptom,lang)).trim()?'<span class="rbsym"><span class="rbsl">'+pick(KL.rbsym,lang)+'</span> '+rich(pick(r.symptom,lang))+'</span>':'';
+      const d=pick(r.detect,lang);
+      const ats=[...new Set(ms.map(m=>atOf(m.f)))];
+      h+='<tr role="row" data-st="'+st+'" id="'+rbDom(s,M,x)+'" tabindex="-1" data-ats="'+E(JSON.stringify(ats))+'">'+
+        '<td role="cell" class="rbfor" data-l="'+E(C[0])+'">'+who+sym+'</td>'+
+        '<td role="cell" data-l="'+E(C[1])+'">'+(String(d).trim()?breakAt(rich(d)):'<span class="nosig">'+pick(KL.nosig,lang)+'</span>')+'</td>'+
+        '<td role="cell" data-l="'+E(C[2])+'">'+rich(pick(r.impact,lang))+'</td>'+
+        '<td role="cell" data-l="'+E(C[3])+'">'+rich(pick(r.action,lang))+'</td></tr>';
+    });
+    return h+'</tbody></table></div></div>';
+  }
+  // Clicking a system or link on the map marks its failure-mode rows and
+  // their runbook rows; a second click on the same one clears the mark. An ID
+  // on the map opens its runbook row, and ↑ in the runbook returns to the mode
+  // on the map: real links, so Tab, Enter and a screen reader's link list
+  // reach them, and the target row takes focus.
   function bindFailures(kb){
     let cur=null;
     const gid=k=>'fg-'+kb.dataset.sec+'-'+[...k].map(c=>c.codePointAt(0).toString(36)).join('-');
     kb.querySelectorAll('.fgroup').forEach(g=>{ g.id=gid(g.dataset.fg); });
-    const pick1=k=>{
-      cur=(cur===k)?null:k;
+    const calm=()=>!!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches);
+    const mark=(k,scroll)=>{
+      cur=k;
       kb.querySelectorAll('.bmap .fm').forEach(x=>{ const on=x.dataset.at===cur; x.classList.toggle('on',on);
         x.setAttribute('aria-pressed',on?'true':'false'); });
       let first=null;
       kb.querySelectorAll('.fgroup').forEach(g=>{ const on=g.dataset.fg===cur; g.classList.toggle('on',on); if(on&&!first) first=g; });
-      const calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
-      if(first) first.scrollIntoView({block:'nearest',behavior:calm?'auto':'smooth'});
+      kb.querySelectorAll('table.rbt tr[data-ats]').forEach(r=>{ let a=[]; try{ a=JSON.parse(r.dataset.ats); }catch(e){}
+        r.classList.toggle('on',cur!=null&&a.includes(cur)); });
+      if(scroll&&first) first.scrollIntoView({block:'nearest',behavior:calm()?'auto':'smooth'});
     };
     kb.querySelectorAll('.bmap .fm').forEach(el=>{
       el.setAttribute('aria-pressed','false'); el.setAttribute('aria-controls',gid(el.dataset.at));
-      el.addEventListener('click',()=>pick1(el.dataset.at));
-      el.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); pick1(el.dataset.at); } });
+      const t=()=>mark(cur===el.dataset.at?null:el.dataset.at,true);
+      el.addEventListener('click',t);
+      el.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); t(); } });
     });
+    kb.querySelectorAll('a[data-jump]').forEach(a=>a.addEventListener('click',e=>{
+      const t=document.getElementById(a.dataset.jump); if(!t||!kb.contains(t)) return;
+      e.preventDefault();
+      if(t.closest('.fgroup')&&t.dataset.at!=null&&cur!==t.dataset.at) mark(t.dataset.at,false);
+      t.scrollIntoView({block:'center',behavior:calm()?'auto':'smooth'});
+      t.focus({preventScroll:true});
+      t.classList.remove('flash'); void t.offsetWidth; t.classList.add('flash');
+    }));
   }
   function compareHTML(s, lang){
     const c=s.cols||[];

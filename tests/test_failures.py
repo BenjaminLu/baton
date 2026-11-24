@@ -55,7 +55,9 @@ def chain(heading):
     }
 
 
-def failures():
+def legacy_failures():
+    """Failure modes as packets wrote them before ids and the runbook: detect,
+    impact and action on the map row itself."""
     return [
         {"at": "app>api", "mode": {"en": "API is down or times out"},
          "detect": {"en": "`api_5xx_ratio` alert > 2% for 5 min"},
@@ -82,6 +84,24 @@ def failures():
     ]
 
 
+IDS = ["api-down", "fcm-unregistered", "fcm-5xx", "job-twice", "fcm-key-expired"]
+
+
+def failures():
+    """The map rows: id, at, mode, state, evidence. Nothing else."""
+    out = []
+    for fid, f in zip(IDS, legacy_failures()):
+        f = {k: v for k, v in f.items() if k not in ("detect", "impact", "action")}
+        out.append(dict(f, id=fid))
+    return out
+
+
+def runbook():
+    """The runbook: detect, impact, action, once each, keyed by failure id."""
+    return [dict({k: f[k] for k in ("detect", "impact", "action") if k in f}, failure=fid)
+            for fid, f in zip(IDS, legacy_failures())]
+
+
 def packet(**boundary):
     b = {"kind": "boundary", "role": "boundary-review", "heading": {"en": "Where it can break"},
          "systems": [{"id": "app", "name": {"en": "Notes app"}, "kind": "client"},
@@ -90,7 +110,7 @@ def packet(**boundary):
          "hops": {"0": "HTTPS", "1": "job", "2": "HTTP v1"},
          "findings": [{"n": 1, "at": "worker>fcm", "lens": "dependency", "tone": "warn",
                        "title": {"en": "dead tokens are retried forever"}, "card": "Dead tokens are retried"}],
-         "failures": failures()}
+         "failures": failures(), "runbook": runbook()}
     b.update(boundary)
     b = {k: v for k, v in b.items() if v is not None}
     return {"title": {"en": "failure modes"}, "sections": [chain("Dead tokens are retried"), b]}
@@ -100,9 +120,21 @@ def fail_problems(data, register="engineer"):
     return check_failures(data, register)[0]
 
 
+def link_warnings(warns):
+    return [w for w in warns if w.startswith("link ")]
+
+
+def quiet(warns):
+    """The "no signal today" warning: the gap is flagged, never failed."""
+    return [w for w in warns if w.startswith("no signal today")]
+
+
 class VerifyFailures(unittest.TestCase):
     def test_clean_packet_passes(self):
-        self.assertEqual(check_failures(packet()), ([], []))
+        probs, warns = check_failures(packet())
+        self.assertEqual(probs, [])
+        self.assertEqual(len(warns), 1, warns)          # job-twice has no signal today: flagged, not failed
+        self.assertIn("job-twice", quiet(warns)[0])
 
     def test_missing_failures_fails_engineer_warns_eli5(self):
         p = packet(failures=None)
@@ -114,23 +146,25 @@ class VerifyFailures(unittest.TestCase):
         self.assertEqual(len(warns), 1)
 
     def test_empty_list_warns_per_uncovered_link(self):
-        probs, warns = check_failures(packet(failures=[]))
+        probs, warns = check_failures(packet(failures=[], runbook=[]))
         self.assertEqual(probs, [])
         self.assertEqual(sorted(re.search(r'link "([^"]+)"', w).group(1) for w in warns),
                          ["api>worker", "app>api", "worker>fcm"])
 
     def test_ok_line_silences_coverage_warning(self):
-        p = packet(failures=[], findings=[], ok={"en": "UI-only change; nothing crosses a boundary"})
+        p = packet(failures=[], runbook=None, findings=[], ok={"en": "UI-only change; nothing crosses a boundary"})
         p["sections"] = p["sections"][1:]
         self.assertEqual(check_failures(p), ([], []))
 
     def test_endpoint_row_covers_its_links(self):
         rows = [r for r in failures() if r["at"] != "api>worker"]
-        _, warns = check_failures(packet(failures=rows))
-        self.assertEqual(len(warns), 1)    # a row on worker>fcm says nothing about api>worker
+        book = [r for r in runbook() if r["failure"] != "job-twice"]
+        probs, warns = check_failures(packet(failures=rows, runbook=book))
+        self.assertEqual(probs, [])
+        self.assertEqual(len(link_warnings(warns)), 1)    # a row on worker>fcm says nothing about api>worker
         rows.append(dict(failures()[3], at="worker"))
-        _, warns = check_failures(packet(failures=rows))
-        self.assertEqual(warns, [])        # a row on an end system covers the link
+        probs, warns = check_failures(packet(failures=rows, runbook=runbook()))
+        self.assertEqual((probs, link_warnings(warns)), ([], []))   # a row on an end system covers the link
 
     def test_at_must_be_on_the_map(self):
         for at in ("nope", "app>nope", "app>api>worker", "", None, "api>app", "app>worker", "app>app"):
@@ -145,10 +179,13 @@ class VerifyFailures(unittest.TestCase):
             self.assertTrue(any(msg in x for x in fail_problems(p)), st)
 
     def test_required_fields(self):
-        for key in ("mode", "impact", "action"):
+        p = packet()
+        del p["sections"][1]["failures"][0]["mode"]
+        self.assertTrue(any("`mode` is required" in x for x in fail_problems(p)))
+        for key in ("impact", "action"):
             p = packet()
-            del p["sections"][1]["failures"][0][key]
-            self.assertTrue(any(f"`{key}` is required" in x for x in fail_problems(p)), key)
+            del p["sections"][1]["runbook"][0][key]
+            self.assertTrue(any(f"runbook row 1: `{key}` is required" in x for x in fail_problems(p)), key)
 
     def test_hostile_refs_fail(self):
         for url in HOSTILE:
@@ -180,8 +217,8 @@ class VerifyFailures(unittest.TestCase):
 
     def test_detected_needs_detect(self):
         p = packet()
-        del p["sections"][1]["failures"][4]["detect"]
-        self.assertTrue(any("`detected` needs `detect`" in x for x in fail_problems(p)))
+        del p["sections"][1]["runbook"][4]["detect"]
+        self.assertTrue(any("`detected` needs `detect` in its runbook row" in x for x in fail_problems(p)))
 
     def test_introduced_unhandled_must_be_a_pin(self):
         p = packet()
@@ -213,12 +250,21 @@ class VerifyFailures(unittest.TestCase):
         probs, _ = check_failures(p)           # findings set, no ok: the coverage loop runs
         self.assertTrue(any('contains ">"' in x for x in probs))
         p = packet()
-        p["sections"][1]["failures"][0]["impact"] = [1]
+        p["sections"][1]["runbook"][0]["impact"] = [1]
         self.assertTrue(any("`impact` is required" in x for x in fail_problems(p)))
+        for bad in ("x", 3, {"a": 1}):
+            self.assertTrue(fail_problems(packet(runbook=bad)), repr(bad))
+        for val in (3, [3], [], {}, ["api-down", 3], None):
+            p = packet()
+            p["sections"][1]["runbook"][0]["failure"] = val
+            self.assertTrue(fail_problems(p), repr(val))
+        p = packet()
+        p["sections"][1]["runbook"].append(None)
+        self.assertTrue(any("runbook row 6: must be an object" in x for x in fail_problems(p)))
 
     def test_ids_compare_as_the_page_prints_them(self):
         p = packet(systems=[{"id": True}, {"id": 1.0}], findings=[], ok={"en": "checked"},
-                   failures=[dict(failures()[3], at="true>1")])
+                   failures=[dict(failures()[3], at="true>1")], runbook=[runbook()[3]])
         p["sections"] = p["sections"][1:]
         self.assertEqual(fail_problems(p), [])
         p = packet()
@@ -249,10 +295,108 @@ class VerifyFailures(unittest.TestCase):
     def test_register_scan_skips_ids_but_reads_prose(self):
         p = packet()
         p["sections"][1]["failures"][0]["at"] = "app>api"
-        p["sections"][1]["failures"][0]["impact"] = {"en": "the retry_queue fills"}
+        p["sections"][1]["runbook"][0]["impact"] = {"en": "the retry_queue fills"}
+        p["sections"][1]["runbook"][1]["failure"] = "fcm_unregistered_ids_are_ids"
         found = " ".join(verify.check_register(p))
         self.assertIn("retry_queue", found)
         self.assertNotIn('"app>api"', found)
+        self.assertNotIn("fcm_unregistered", found)        # a cited id is a key, not prose
+
+
+class VerifyRunbook(unittest.TestCase):
+    """One home per fact: the map row names the mode, its runbook row says the rest."""
+
+    def test_ids_are_anchors_and_unique(self):
+        for bad in ("", " x", "a b", "-x", "x" * 65, "é", 3, '"><b>'):
+            p = packet()
+            p["sections"][1]["failures"][0]["id"] = bad
+            self.assertTrue(any("`id`" in x for x in fail_problems(p)), repr(bad))
+        p = packet()
+        p["sections"][1]["failures"][2]["id"] = "fcm-unregistered"
+        self.assertTrue(any("ids are unique" in x for x in fail_problems(p)))
+
+    def test_every_mode_has_exactly_one_runbook_row(self):
+        p = packet()
+        del p["sections"][1]["runbook"][3]
+        self.assertTrue(any("`job-twice`" in x and "no runbook row" in x for x in fail_problems(p)))
+        p = packet()
+        p["sections"][1]["runbook"].append(dict(runbook()[3]))
+        self.assertTrue(any("2 runbook rows cite it" in x for x in fail_problems(p)))
+
+    def test_cited_ids_resolve(self):
+        for bad in ("no-such-mode", "#1", "API-DOWN"):
+            p = packet()
+            p["sections"][1]["runbook"].append({"failure": bad, "impact": {"en": "x"}, "action": {"en": "y"}})
+            self.assertTrue(any(f'cites failure "{bad}"' in x for x in fail_problems(p)), bad)
+
+    def test_one_row_may_handle_several_modes(self):
+        p = packet()
+        book = p["sections"][1]["runbook"]
+        book[1]["failure"] = ["fcm-unregistered", "fcm-5xx"]
+        del book[2]
+        self.assertEqual(fail_problems(p), [])
+        book[0]["failure"] = ["api-down", "api-down"]
+        self.assertTrue(any("same failure id twice" in x for x in fail_problems(p)))
+
+    def test_symptom_rows(self):
+        p = packet()
+        p["sections"][1]["runbook"].append({"symptom": {"en": "users report `E_SYNC_409` on save"},
+                                            "detect": {"en": "support tag `sync-409`"},
+                                            "impact": {"en": "the save fails"}, "action": {"en": "reload"}})
+        self.assertEqual(fail_problems(p), [])
+        del p["sections"][1]["runbook"][-1]["symptom"]
+        self.assertTrue(any("cites no failure id and has no `symptom`" in x for x in fail_problems(p)))
+
+    def test_one_home_per_fact(self):
+        p = packet()
+        p["sections"][1]["failures"][0]["action"] = {"en": "retry"}
+        out = fail_problems(p)
+        self.assertTrue(any("`action` written here and in the runbook row" in x for x in out), out)
+
+    def test_no_signal_today_is_allowed_and_flagged(self):
+        p = packet()
+        for r in p["sections"][1]["runbook"]:
+            r.pop("detect", None)
+        p["sections"][1]["failures"][4]["state"] = "unhandled"     # detected would need a signal
+        probs, warns = check_failures(p)
+        self.assertEqual(probs, [])
+        self.assertIn("no signal today for 5 runbook row(s)", quiet(warns)[0])
+
+    def test_legacy_packet_warns_to_migrate_never_fails(self):
+        probs, warns = check_failures(packet(failures=legacy_failures(), runbook=None))
+        self.assertEqual(probs, [])
+        self.assertTrue(any("have no `id`" in w and "migrate" in w for w in warns), warns)
+        self.assertTrue(any("carry detect / impact / action on the map" in w for w in warns), warns)
+        self.assertEqual(len(quiet(warns)), 1)                     # the moved rows are checked like any other
+
+    def test_legacy_rules_still_hold(self):
+        rows = legacy_failures()
+        del rows[4]["detect"]
+        self.assertTrue(any("`detected` needs `detect`" in x
+                            for x in fail_problems(packet(failures=rows, runbook=None))))
+        rows = legacy_failures()
+        del rows[0]["impact"]
+        self.assertTrue(any("`impact` is required" in x
+                            for x in fail_problems(packet(failures=rows, runbook=None))))
+        rows = legacy_failures()
+        for k in ("detect", "impact", "action"):
+            rows[3].pop(k, None)
+        self.assertTrue(any("no runbook row" in x for x in fail_problems(packet(failures=rows, runbook=None))))
+
+    def test_half_migrated_packet(self):
+        rows = legacy_failures()
+        rows[0]["id"] = "api-down"
+        rows[0] = {k: v for k, v in rows[0].items() if k not in ("detect", "impact", "action")}
+        probs, warns = check_failures(packet(failures=rows, runbook=[runbook()[0]]))
+        self.assertEqual(probs, [])
+        self.assertTrue(any("carry detect / impact / action" in w for w in warns))
+
+    def test_runbook_links_follow_the_link_rule(self):
+        p = packet()
+        p["sections"][1]["runbook"][0]["action"] = {"en": "see [runbook](javascript:alert(1))"}
+        self.assertTrue(verify.check_links(p))
+        p["sections"][1]["runbook"][0]["action"] = {"en": "see [runbook](https://docs.example.com/push)"}
+        self.assertEqual(verify.check_links(p), [])
 
 
 class VerifyCommandLine(unittest.TestCase):
@@ -268,6 +412,12 @@ class VerifyCommandLine(unittest.TestCase):
         return subprocess.run([sys.executable, str(ROOT / "scripts" / "verify.py"), str(tmp / "p.html"),
                                "--register", register], capture_output=True, text=True)
 
+    def test_packet_from_before_the_runbook_passes_with_migration_warnings(self):
+        r = self.run_verify(packet(failures=legacy_failures(), runbook=None), "engineer")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("migrate", r.stderr)
+        self.assertNotIn("Traceback", r.stderr)
+
     def test_legacy_packet(self):
         r = self.run_verify(packet(failures=None), "engineer")
         self.assertEqual(r.returncode, 1)
@@ -278,7 +428,7 @@ class VerifyCommandLine(unittest.TestCase):
     def test_full_packet_passes_and_prints_warnings_without_failing(self):
         r = self.run_verify(packet(), "engineer")
         self.assertEqual(r.returncode, 0, r.stderr)
-        r = self.run_verify(packet(failures=[]), "engineer")
+        r = self.run_verify(packet(failures=[], runbook=[]), "engineer")
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertIn("warning(s)", r.stderr)
 
@@ -340,30 +490,73 @@ PROBE = """<script>
 window.addEventListener('load',()=>setTimeout(()=>{
   document.querySelectorAll('article.step').forEach(a=>a.classList.add('on'));
   const q=s=>[...document.querySelectorAll(s)];
+  const MAP='table.fmt:not(.rbt)', RB='table.rbt';
+  const txt=s=>{ const e=document.querySelector(s); return e?e.textContent:''; };
   const out={cls:document.documentElement.className,
     groups:q('.fgroup').map(g=>g.dataset.fg),
-    rows:q('table.fmt tbody tr:not(.fgh)').length,
+    rows:q(MAP+' tbody tr:not(.fgh)').length, rbRows:q(RB+' tbody tr').length,
+    mapIds:q(MAP+' td.fid').map(td=>td.textContent.replace(/[\\u2193\\s]/g,'')),
+    mapText:txt(MAP), rbText:txt(RB),
     refs:q('a.fref').map(a=>({href:a.getAttribute('href'),target:a.getAttribute('target'),rel:a.getAttribute('rel'),text:a.textContent})),
     refused:q('.noref').map(e=>e.textContent),
-    nosig:q('.nosig').length, planned:q('.fplan').length, pins:q('table.fmt .badge').map(b=>b.textContent),
-    states:q('table.fmt .ktag').map(e=>e.className),
+    nosig:q(RB+' .nosig').length, mapNosig:q(MAP+' .nosig').length, planned:q('.fplan').length,
+    pins:q(MAP+' .badge').map(b=>b.textContent),
+    states:q(MAP+' .ktag').map(e=>e.className), rbStates:q(RB+' tr[data-st]').map(r=>r.dataset.st),
     onattrs:q('*').flatMap(e=>[...e.attributes].filter(x=>/^on/i.test(x.name)).map(x=>e.tagName+' '+x.name)),
     mapTargets:q('.bmap .fm').map(e=>e.dataset.at), imgs:q('main img, main script').length,
     fcmOrder:q('tbody.fgroup[data-fg="worker>fcm"] tr[data-st]').map(r=>r.dataset.st),
-    roles:{table:q('table.fmt[role=table]').length, rowgroup:q('table.fmt [role=rowgroup]').length,
-      rows:q('table.fmt tbody tr[role=row]').length, cells:q('table.fmt td[role=cell]').length,
-      colheads:q('table.fmt th[role=columnheader]').length, rowheads:q('table.fmt th[role=rowheader]').length}};
+    roles:{table:q(MAP+'[role=table]').length, rowgroup:q(MAP+' [role=rowgroup]').length,
+      rows:q(MAP+' tbody tr[role=row]').length, cells:q(MAP+' td[role=cell]').length,
+      colheads:q(MAP+' th[role=columnheader]').length, rowheads:q(MAP+' th[role=rowheader]').length,
+      rbCells:q(RB+' td[role=cell]').length, rbColheads:q(RB+' th[role=columnheader]').length}};
+  // Both directions: every map ID opens a runbook row that links back to it.
+  out.pairs=q(MAP+' a.fjump').map(a=>{ const row=a.closest('tr'); const t=document.getElementById(a.dataset.jump);
+    return {id:a.textContent.replace(/[\\u2193\\s]/g,''), href:a.getAttribute('href')==='#'+a.dataset.jump,
+      inRunbook:!!(t&&t.closest(RB)), back:!!(t&&[...t.querySelectorAll('a.fback')].some(b=>b.dataset.jump===row.id))}; });
+  out.backs=q(RB+' a.fback').map(a=>{ const t=document.getElementById(a.dataset.jump); return !!(t&&t.closest(MAP)); });
+  // Links a keyboard reaches and a screen reader names (its name holds the visible id).
+  out.a11y=q('a.fjump,a.fback').map(a=>({tab:a.tabIndex, href:(a.getAttribute('href')||'').startsWith('#'),
+    named:(a.getAttribute('aria-label')||'').includes(a.querySelector('code').textContent.replace(/\\u200b/g,'')),
+    hidden:[...a.querySelectorAll('[aria-hidden=true]')].every(x=>/^[\\u2191\\u2193\\s\\u00a0]+$/.test(x.textContent))}));
+  out.targetsFocusable=q(MAP+' tbody tr:not(.fgh),'+RB+' tbody tr').every(r=>r.getAttribute('tabindex')==='-1');
+  const go=q(MAP+' a.fjump').find(a=>a.textContent.startsWith('fcm-unregistered'));
+  if(go){ go.focus(); go.click(); const act=document.activeElement;
+    out.jumped={active:act&&act.id, inRunbook:!!(act&&act.closest&&act.closest(RB)), flash:!!(act&&act.classList.contains('flash')),
+      text:act?act.textContent:''};
+    const back=act&&act.querySelector&&act.querySelector('a.fback');
+    if(back){ back.click(); const a2=document.activeElement;
+      out.returned={active:a2&&a2.id, inMap:!!(a2&&a2.closest&&a2.closest(MAP)), from:go.closest('tr').id,
+        marked:q('.fgroup.on').map(g=>g.dataset.fg), pressed:q('.bmap .fm[aria-pressed=true]').map(e=>e.dataset.at),
+        rbMarked:q(RB+' tr.on').length}; } }
+  const k0=q('.bmap .fm.on')[0]; if(k0) k0.click();   // clear before the map checks
   const t=document.querySelector('.bmap .carrow.fm[data-at="worker>fcm"]'); if(t) t.click();
   out.marked=q('.fgroup.on').map(g=>g.dataset.fg);
+  out.rbMarked=q(RB+' tr.on').map(r=>JSON.parse(r.dataset.ats));
   const k=document.querySelector('.bmap .cnode.fm[data-at="fcm"]');
   if(k) k.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true}));
   out.markedKey=q('.fgroup.on').map(g=>g.dataset.fg);
   out.pressed=q('.bmap .fm[aria-pressed=true]').map(e=>e.dataset.at);
   out.controls=q('.bmap .fm').every(e=>document.getElementById(e.getAttribute('aria-controls')));
-  if(k) k.click(); out.cleared=q('.fgroup.on').length;
+  if(k) k.click(); out.cleared=q('.fgroup.on').length+q(RB+' tr.on').length;
   const pre=document.createElement('pre'); pre.id='fm-out'; pre.textContent=JSON.stringify(out);
   document.body.appendChild(pre);},400));
 </script></body>"""
+
+
+def probe(spec):
+    spec = copy.deepcopy(spec)
+    spec["context"] = "Say you do not know. " * 100 + "\n## Boundary review\n"
+    tmp = Path(tempfile.mkdtemp(prefix="baton-fm-"))
+    (tmp / "p.json").write_text(json.dumps(spec))
+    subprocess.run([sys.executable, str(ROOT / "scripts" / "render.py"), str(tmp / "p.json"),
+                    "-o", str(tmp / "p.html")], check=True, capture_output=True)
+    head, _, tail = (tmp / "p.html").read_text().rpartition("</body>")
+    (tmp / "probe.html").write_text(head + PROBE + tail)
+    dom = subprocess.run([CHROME, "--headless=new", "--disable-gpu", "--virtual-time-budget=4000",
+                          "--dump-dom", (tmp / "probe.html").as_uri()],
+                         capture_output=True, text=True, timeout=120).stdout
+    m = re.search(r'<pre id="fm-out">(.*?)</pre>', dom, re.S)
+    return json.loads(htmlmod.unescape(m.group(1))) if m else None
 
 
 @unittest.skipUnless(CHROME, "no Chrome")
@@ -373,6 +566,8 @@ class RenderedFailures(unittest.TestCase):
         spec = packet()
         rows = spec["sections"][1]["failures"]
         rows[1], rows[2] = rows[2], rows[1]          # handled first in the packet
+        # Rows below are written the old way (no id, runbook fields on the row):
+        # the page numbers them and moves their fields into the runbook.
         rows.append({"at": "api", "mode": {"en": "a planned cache goes stale"},
                      "impact": {"en": "old notes show"}, "action": {"en": "expire after 60 s"},
                      "state": "unhandled", "planned": True,
@@ -380,23 +575,14 @@ class RenderedFailures(unittest.TestCase):
         rows.append({"at": "fcm", "mode": {"en": '"><img src=x onerror="' + on("mode") + '">'},
                      "detect": {"en": "<script>" + on("detect") + "</script>"},
                      "impact": {"en": "[x](javascript:" + on("impact") + ")"}, "action": {"en": "y"},
-                     "state": "toString", "finding": '"><b>'})
+                     "state": "toString", "finding": '"><b>', "id": '"><i onclick=' + on("id") + '>'})
         rows.append(["not", "a", "row"])
         for i, url in enumerate(HOSTILE):
             rows.append({"at": "app", "mode": {"en": f"hostile {i}"}, "impact": {"en": "x"},
                          "action": {"en": "y"}, "ref": url, "state": "unhandled"})
-        spec["context"] = "Say you do not know. " * 100 + "\n## Boundary review\n"
-        tmp = Path(tempfile.mkdtemp(prefix="baton-fm-"))
-        (tmp / "p.json").write_text(json.dumps(spec))
-        subprocess.run([sys.executable, str(ROOT / "scripts" / "render.py"), str(tmp / "p.json"),
-                        "-o", str(tmp / "p.html")], check=True, capture_output=True)
-        head, _, tail = (tmp / "p.html").read_text().rpartition("</body>")
-        (tmp / "probe.html").write_text(head + PROBE + tail)
-        dom = subprocess.run([CHROME, "--headless=new", "--disable-gpu", "--virtual-time-budget=4000",
-                              "--dump-dom", (tmp / "probe.html").as_uri()],
-                             capture_output=True, text=True, timeout=120).stdout
-        m = re.search(r'<pre id="fm-out">(.*?)</pre>', dom, re.S)
-        cls.out = json.loads(htmlmod.unescape(m.group(1))) if m else None
+        spec["sections"][1]["runbook"].append({"failure": ['"><b>', "nope"], "symptom": {"en": "<b>" + on("sym") + "</b>"},
+                                               "impact": {"en": "x"}, "action": {"en": "y"}})
+        cls.out = probe(spec)
         cls.n_hostile = len(HOSTILE)
 
     def setUp(self):
@@ -405,6 +591,45 @@ class RenderedFailures(unittest.TestCase):
     def test_grouped_in_map_order(self):
         self.assertEqual(self.out["groups"], ["app", "app>api", "api", "api>worker", "worker>fcm", "fcm"])
         self.assertEqual(self.out["rows"], 7 + self.n_hostile)   # the array row is skipped
+        self.assertEqual(self.out["rbRows"], 7 + self.n_hostile + 1)   # + the symptom row citing nothing real
+
+    def test_map_carries_no_runbook_prose(self):
+        mp, rb = self.out["mapText"], self.out["rbText"]
+        for fact in ("api_5xx_ratio", "never gets reminders", "dedupe on job id", "rotate the key"):
+            self.assertNotIn(fact, mp, fact)
+            self.assertIn(fact, rb, fact)
+        for col in ("Signal before", "What the user sees", "What to do"):
+            self.assertNotIn(col, mp)
+
+    def test_ids_on_the_map(self):
+        ids = self.out["mapIds"]
+        for fid in IDS:
+            self.assertIn(fid, ids)
+        self.assertIn("#9", ids)                                 # a legacy row is numbered by position
+        self.assertTrue(any(i.startswith("#") for i in ids if "onclick" not in i))
+
+    def test_anchors_resolve_both_ways(self):
+        pairs = self.out["pairs"]
+        self.assertEqual(len(pairs), self.out["rows"])            # every mode on the map opens a runbook row
+        for x in pairs:
+            self.assertEqual((x["href"], x["inRunbook"], x["back"]), (True, True, True), x)
+        self.assertTrue(self.out["backs"] and all(self.out["backs"]))
+
+    def test_links_are_keyboard_and_screen_reader_reachable(self):
+        self.assertTrue(self.out["a11y"])
+        for x in self.out["a11y"]:
+            self.assertEqual((x["tab"], x["href"], x["named"], x["hidden"]), (0, True, True, True), x)
+        self.assertTrue(self.out["targetsFocusable"])
+
+    def test_jump_moves_focus_and_back_marks_the_map(self):
+        j = self.out["jumped"]
+        self.assertTrue(j["inRunbook"] and j["flash"], j)
+        self.assertIn("never gets reminders", j["text"])
+        r = self.out["returned"]
+        self.assertEqual((r["active"], r["inMap"]), (r["from"], True), r)
+        self.assertEqual(r["marked"], ["worker>fcm"])            # back on the map, its boundary is marked
+        self.assertEqual(r["pressed"], ["worker>fcm"])
+        self.assertEqual(r["rbMarked"], 2)
 
     def test_only_https_links_open_in_a_new_tab(self):
         refs = self.out["refs"]
@@ -421,7 +646,9 @@ class RenderedFailures(unittest.TestCase):
 
     def test_gaps_are_named(self):
         self.assertIn("no code reference", self.out["refused"])
-        self.assertEqual(self.out["nosig"], 2 + self.n_hostile)   # api>worker, planned cache, hostile rows
+        self.assertIn("not on the map", self.out["refused"])      # a runbook row citing an unknown id
+        self.assertEqual(self.out["nosig"], 3 + self.n_hostile)   # job-twice, planned cache, symptom row, hostile rows
+        self.assertEqual(self.out["mapNosig"], 0)                 # every mode has its runbook row
         self.assertEqual(self.out["planned"], 1)
         self.assertEqual(self.out["pins"], ["1", '"><b>'])
         self.assertIn("ktag ", self.out["states"])    # "toString" renders as state not given
@@ -429,6 +656,7 @@ class RenderedFailures(unittest.TestCase):
         self.assertIn("ktag ok", self.out["states"])
         self.assertIn("ktag warn", self.out["states"])
         self.assertIn("ktag risk", self.out["states"])
+        self.assertIn("unknown", self.out["rbStates"])            # the symptom row handles no mode on the map
 
     def test_worst_first_within_a_boundary(self):
         # the packet lists handled before unhandled here; the page must put unhandled first
@@ -436,18 +664,40 @@ class RenderedFailures(unittest.TestCase):
 
     def test_cards_keep_table_semantics(self):
         r, n = self.out["roles"], len(self.out["groups"])
-        self.assertEqual((r["table"], r["colheads"], r["rowheads"]), (1, 6, n))
+        self.assertEqual((r["table"], r["colheads"], r["rowheads"]), (1, 4, n))
         self.assertEqual(r["rowgroup"], n + 1)
-        self.assertEqual(r["cells"], 6 * self.out["rows"])
+        self.assertEqual(r["cells"], 4 * self.out["rows"])
         self.assertEqual(r["rows"], self.out["rows"] + n)
+        self.assertEqual((r["rbColheads"], r["rbCells"]), (4, 4 * self.out["rbRows"]))
 
     def test_map_marks_rows(self):
         self.assertIn("worker>fcm", self.out["mapTargets"])
         self.assertEqual(self.out["marked"], ["worker>fcm"])
+        self.assertTrue(self.out["rbMarked"] and all("worker>fcm" in a for a in self.out["rbMarked"]))
         self.assertEqual(self.out["markedKey"], ["fcm"])
         self.assertEqual(self.out["pressed"], ["fcm"])
         self.assertTrue(self.out["controls"])
         self.assertEqual(self.out["cleared"], 0)      # a second click clears the mark
+
+
+@unittest.skipUnless(CHROME, "no Chrome")
+class RenderedLegacyPacket(unittest.TestCase):
+    """A packet written before ids and the runbook: same facts on the page,
+    detect / impact / action moved into generated runbook rows."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.out = probe(packet(failures=legacy_failures(), runbook=None))
+
+    def test_migrates(self):
+        o = self.out
+        self.assertIsNotNone(o)
+        self.assertEqual(o["mapIds"], ["#1", "#4", "#2", "#3", "#5"])      # map order, worst first
+        self.assertEqual(o["rbRows"], 5)
+        self.assertNotIn("api_5xx_ratio", o["mapText"])
+        self.assertIn("api_5xx_ratio", o["rbText"])
+        self.assertEqual(o["nosig"], 1)
+        self.assertTrue(all(x["inRunbook"] and x["back"] for x in o["pairs"]) and len(o["pairs"]) == 5)
 
 
 LONG_REF = ("https://github.com/a-very-long-organisation-name/an-even-longer-repository-name-here/blob/"
@@ -464,10 +714,12 @@ class LongValuesOnPhones(unittest.TestCase):
 
     def test_snapshot_passes_with_long_ref_and_metric(self):
         spec = packet()
-        rows = spec["sections"][1]["failures"]
-        rows.append(dict(rows[2], ref=LONG_REF, detect={"en": "`" + LONG_METRIC + "`"}))
-        rows.append(dict(rows[0], ref="https://docs.example.com/" + "x" * 160,
-                         detect={"en": LONG_METRIC.split("{")[0]}))
+        rows, book = spec["sections"][1]["failures"], spec["sections"][1]["runbook"]
+        long_id = "push-delivery.worker_retry-policy-unregistered-token-errors-x" + "y" * 3
+        rows.append(dict(rows[2], id=long_id, ref=LONG_REF))
+        book.append(dict(book[2], failure=long_id, detect={"en": "`" + LONG_METRIC + "`"}))
+        rows.append(dict(rows[0], id="api-down-2", ref="https://docs.example.com/" + "x" * 160))
+        book.append(dict(book[0], failure="api-down-2", detect={"en": LONG_METRIC.split("{")[0]}))
         spec["context"] = "Say you do not know. " * 100 + "\n## Boundary review\n"
         tmp = Path(tempfile.mkdtemp(prefix="baton-fm-long-"))
         (tmp / "p.json").write_text(json.dumps(spec))
@@ -477,12 +729,13 @@ class LongValuesOnPhones(unittest.TestCase):
                             "-o", str(tmp / "shots")], capture_output=True, text=True, timeout=600)
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         self.assertNotIn("sideways", r.stdout)
-        # Above the card breakpoint the table fits its card: State is never pushed
+        # Above the card breakpoint both tables fit their card: State is never pushed
         # into the table's own sideways scroll, even with the long owner/repo.
         page = (tmp / "p.html").read_text()
         probe = ("<script>window.addEventListener('load',()=>{document.getElementById('next').click();"
-                 "setTimeout(()=>{const t=document.querySelector('.fmodes .tscroll');const p=document.createElement('pre');"
-                 "p.id='fit';p.textContent=t.scrollWidth-t.clientWidth;document.body.appendChild(p);},300)});</script></body>")
+                 "setTimeout(()=>{const t=[...document.querySelectorAll('.fmodes .tscroll')];const p=document.createElement('pre');"
+                 "p.id='fit';p.textContent=t.length===2?Math.max(...t.map(x=>x.scrollWidth-x.clientWidth)):-999;"
+                 "document.body.appendChild(p);},300)});</script></body>")
         head, _, tail = page.rpartition("</body>")
         (tmp / "fit.html").write_text(head + probe + tail)
         for w in (905, 1024, 1280):
@@ -491,7 +744,8 @@ class LongValuesOnPhones(unittest.TestCase):
                                  capture_output=True, text=True, timeout=120).stdout
             m = re.search(r'<pre id="fit">(-?\d+)</pre>', dom)
             self.assertIsNotNone(m, w)
-            self.assertLessEqual(int(m.group(1)), 0, f"{w}px: the table scrolls inside its card")
+            self.assertNotEqual(int(m.group(1)), -999, "the map table and the runbook both render")
+            self.assertLessEqual(int(m.group(1)), 0, f"{w}px: a table scrolls inside its card")
 
 
 if __name__ == "__main__":

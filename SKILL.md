@@ -108,14 +108,16 @@ six lenses: identity, truth, effect, dependency, coexist (old/new versions),
 edges (`references/boundary-review.md`). Each real finding is a numbered pin
 on the node or link where it lives and has its own `chain` card; links with
 no finding render green. When nothing is wrong, the map says what was checked
-and that it is fine — never a padded finding. Under the map sits the **failure-mode
-table** — for every system and link: each way it fails (down, slow, partial,
+and that it is fine — never a padded finding. Under the map sit the **failure
+modes** — for every system and link, each way it fails (down, slow, partial,
 error codes, dropped / duplicated / reordered messages, stale data, expiry,
-version skew), the signal that fires before a user complains ("no signal
-today" when none does), what the user sees, the runbook action, a SHA-pinned
-code reference, and `handled` / `detected` / `unhandled`. It is exhaustive,
-not admission-tested; a mode that is unhandled *and* introduced by this work
-is also a pin. For a pull request, findings are
+version skew) as a compact row: id, where, what fails, `handled` / `detected`
+/ `unhandled`, and a SHA-pinned code reference. After them, the **runbook** —
+one row per failure id, the only place the signal that fires before a user
+complains ("no signal today" when none does), what the user sees and what
+on-call does are written. Each id links to its runbook row and back. It is
+exhaustive, not admission-tested; a mode that is unhandled *and* introduced by
+this work is also a pin. For a pull request, findings are
 also written as paste-ready review comments in the context; posting them is
 outward-facing and waits for the user to ask.
 

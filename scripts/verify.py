@@ -38,7 +38,7 @@ REFUSAL = ("say you do not know", "say you don't know", "說不知道", "说不�
 SKIP_KEYS = {"mermaid", "svg", "id", "kind", "tone", "filename", "range",
              "repo", "branch", "format_version", "layer", "glossary",
              "layer_note", "k", "was", "now", "method", "table", "op",
-             "guard", "summary", "ref", "at", "state"}
+             "guard", "summary", "ref", "at", "state", "failure"}
 
 
 def load(path):
@@ -404,12 +404,70 @@ def _links(systems):
     return [(f"{a}>{b}", a, b) for a, b in zip(ids, ids[1:])]
 
 
-def check_failures(data, register="engineer"):
-    """The failure-mode table under the boundary map (boundary-review.md §3).
+# A failure id is an anchor and a key: short, ASCII, no space. A row written
+# before ids existed gets "#<position>" — a character no authored id may hold,
+# so it can never collide with one or be cited by a runbook row.
+FAILURE_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,63}")
+RUNBOOK_FIELDS = ("detect", "impact", "action")
 
-    Returns (problems, warnings). Problems fail the run; warnings print and
-    leave the exit code alone. A packet written before `failures` existed gets
-    one clear sentence telling the author what to add, never a traceback.
+
+def runbook_of(sec):
+    """The failure modes and the runbook rows of a boundary section, as the
+    page draws them (templates/packet.html failureModel()).
+
+    Returns (modes, rows). `modes` is [(index, row, id, authored)] for every
+    object in `failures`; `rows` is [(index | None, row, [cited ids])] for every
+    runbook row, with a row generated — `index` None — for each mode that
+    still carries detect / impact / action itself and no runbook row cites.
+    """
+    fails = sec.get("failures") if isinstance(sec.get("failures"), list) else []
+    book = sec.get("runbook") if isinstance(sec.get("runbook"), list) else []
+    modes, taken = [], set()
+    for i, f in enumerate(fails):
+        if isinstance(f, dict) and isinstance(f.get("id"), str) and FAILURE_ID.fullmatch(f["id"]):
+            taken.add(f["id"])
+    for i, f in enumerate(fails):
+        if not isinstance(f, dict):
+            continue
+        fid = f.get("id")
+        if isinstance(fid, str) and FAILURE_ID.fullmatch(fid):
+            modes.append((i, f, fid, True))
+        else:
+            modes.append((i, f, f"#{i+1}", False))
+    rows, cited = [], set()
+    for i, r in enumerate(book):
+        if not isinstance(r, dict):
+            continue
+        ids = _cites(r)
+        cited.update(ids)
+        rows.append((i, r, ids))
+    for _, f, fid, authored in modes:
+        if (not authored or fid not in cited) and any(k in f for k in RUNBOOK_FIELDS):
+            rows.append((None, {k: f[k] for k in RUNBOOK_FIELDS if k in f}, [fid]))
+    return modes, rows
+
+
+def _cites(r):
+    """The failure ids a runbook row names in `failure`: one id or a list."""
+    v = r.get("failure")
+    if isinstance(v, str):
+        return [v]
+    if isinstance(v, list):
+        return [x for x in v if isinstance(x, str)]
+    return []
+
+
+def check_failures(data, register="engineer"):
+    """The failure-mode list on the boundary map and its runbook
+    (boundary-review.md §3).
+
+    One home per fact: a failure mode on the map is id · at · mode · state ·
+    evidence; what detects it, what the user sees and what to do live in one
+    runbook row that cites the id. Returns (problems, warnings). Problems fail
+    the run; warnings print and leave the exit code alone. A packet written
+    before ids and the runbook existed renders unchanged (the page moves the
+    fields into generated runbook rows) and gets warnings saying how to
+    migrate, never a failure or a traceback.
     """
     sections = (data or {}).get("sections") if isinstance(data, dict) else None
     if not isinstance(sections, list) or not sections or not isinstance(sections[-1], dict) \
@@ -423,24 +481,48 @@ def check_failures(data, register="engineer"):
         problems.append(f'system id "{i[:40]}" contains ">" — it would make an `at` link ambiguous; rename it')
     if "failures" not in sec:
         msg = ("the boundary map has no `failures` — list every failure mode per system and link "
-               "(mode, detect, impact, action, ref, state; boundary-review.md §3), or "
+               "(id, at, mode, state, ref; boundary-review.md §3) with a `runbook` row per mode, or "
                '`"failures": []` when none apply')
         (problems if register == "engineer" and len(ids) >= 2 else warnings).append(msg)
         return problems, warnings
     rows = sec.get("failures")
     if not isinstance(rows, list):
         return ["`failures` must be a list of failure modes"], warnings
+    if "runbook" in sec and not isinstance(sec.get("runbook"), list):
+        return ["`runbook` must be a list of runbook rows"], warnings
     hashable = lambda v: isinstance(v, (int, str)) and not isinstance(v, bool)
     finds = sec.get("findings") if isinstance(sec.get("findings"), list) else []
     pins = {f.get("n"): ("" if f.get("at") is None else _js_str(f.get("at")))
             for f in finds if isinstance(f, dict) and hashable(f.get("n"))}
     covered = set()
     drawn = {k for k, _, _ in _links(systems)}
+    modes, book = runbook_of(sec)
+    authored = {fid for _, _, fid, a in modes if a}
+    by_id = {fid: (i, f) for i, f, fid, _ in modes}
+    label_of = lambda i, f, fid: (f'failure mode {i+1}' + (f' `{fid}`' if not fid.startswith("#") else "") +
+                                  f' ("{_en(f.get("mode"))[:40]}")')
+    # Which runbook rows name each mode, and what each row says.
+    rows_for = {fid: [] for _, _, fid, _ in modes}
+    for j, (ri, r, cites) in enumerate(book):
+        for c in cites:
+            if c in rows_for and (c in authored or ri is None):
+                rows_for[c].append(j)
     for i, f in enumerate(rows):
         if not isinstance(f, dict):
             problems.append(f"failure mode {i+1}: must be an object")
-            continue
-        label = f'failure mode {i+1} ("{_en(f.get("mode"))[:40]}")'
+    seen, legacy_ids, legacy_fields = {}, [], []
+    for i, f, fid, is_authored in modes:
+        label = label_of(i, f, fid)
+        raw = f.get("id")
+        if raw is None:
+            legacy_ids.append(i + 1)
+        elif not is_authored:
+            problems.append(f"{label}: `id` {str(raw)[:40]!r} must be 1–64 characters of A–Z a–z 0–9 _ . - "
+                            "starting with a letter or digit")
+        elif fid in seen:
+            problems.append(f"{label}: `id` \"{fid}\" is also failure mode {seen[fid]+1} — ids are unique")
+        else:
+            seen[fid] = i
         at = f.get("at")
         at = _js_str(at) if isinstance(at, (str, int)) and not isinstance(at, bool) else ""
         if not (at in ids or at in drawn):
@@ -448,9 +530,21 @@ def check_failures(data, register="engineer"):
                             "(each system to the next, in map order)")
         else:
             covered.add(at)
-        for key in ("mode", "impact", "action"):
-            if not _text(f.get(key)).strip():
-                problems.append(f"{label}: `{key}` is required")
+        if not _text(f.get("mode")).strip():
+            problems.append(f"{label}: `mode` is required")
+        own = [k for k in RUNBOOK_FIELDS if k in f]
+        cited_by = [j for j in rows_for.get(fid, []) if book[j][0] is not None]
+        if own and cited_by:
+            problems.append(f"{label}: {', '.join('`'+k+'`' for k in own)} written here and in the runbook row "
+                            "that cites it — one home per fact: keep them in the runbook row only")
+        elif own:
+            legacy_fields.append(fid if is_authored else str(i + 1))
+        n_rows = len(rows_for.get(fid, []))
+        if n_rows == 0:
+            problems.append(f"{label}: no runbook row — add one to `runbook` with "
+                            f'"failure": "{fid if is_authored else "<this mode's id>"}" and its detect, impact, action')
+        elif n_rows > 1:
+            problems.append(f"{label}: {n_rows} runbook rows cite it — each failure mode has exactly one")
         st = f.get("state")
         if st in (None, ""):
             problems.append(f"{label}: no `state` — set one of {sorted(FAILURE_STATES)}; there is no default")
@@ -464,8 +558,8 @@ def check_failures(data, register="engineer"):
                                 "character, space, quote or backslash; no empty, . or .. segment; no % in a GitHub path")
             else:
                 m = GITHUB_BLOB.match(ref)
-                raw = GITHUB_RAW.match(ref)
-                if raw and not re.fullmatch(r"(?ai)[0-9a-f]{7,40}", raw.group(1)):
+                raw_gh = GITHUB_RAW.match(ref)
+                if raw_gh and not re.fullmatch(r"(?ai)[0-9a-f]{7,40}", raw_gh.group(1)):
                     problems.append(f"{label}: `ref` is a raw GitHub link not pinned to a commit — use "
                                     "raw.githubusercontent.com/<owner>/<repo>/<sha>/<path>")
                 if GITHUB_CODE.match(ref):
@@ -480,8 +574,9 @@ def check_failures(data, register="engineer"):
         if st == "handled" and ref is None and not _text(f.get("source")).strip():
             problems.append(f"{label}: `handled` needs `ref` — the code line that handles it "
                             "(or, on a proposal, the `source` sentence)")
-        if st == "detected" and not _text(f.get("detect")).strip():
-            problems.append(f"{label}: `detected` needs `detect` — the signal that notices it")
+        if st == "detected" and n_rows and not any(_text(book[j][1].get("detect")).strip()
+                                                    for j in rows_for[fid]):
+            problems.append(f"{label}: `detected` needs `detect` in its runbook row — the signal that notices it")
         if f.get("finding") is not None:
             if not (hashable(f["finding"]) and f["finding"] in pins):
                 problems.append(f"{label}: `finding` {f['finding']!r} is not a pin on the map")
@@ -491,6 +586,44 @@ def check_failures(data, register="engineer"):
         if f.get("introduced") and st == "unhandled" and f.get("finding") is None:
             problems.append(f"{label}: unhandled and introduced by this work — that is a finding; "
                             "give it a pin and set `finding` to its number")
+    # The runbook rows themselves.
+    raw_book = sec.get("runbook") if isinstance(sec.get("runbook"), list) else []
+    for j, r in enumerate(raw_book):
+        if not isinstance(r, dict):
+            problems.append(f"runbook row {j+1}: must be an object")
+    quiet = []
+    for ri, r, cites in book:
+        name = (f"runbook row {ri+1}" if ri is not None else
+                f"failure mode {by_id[cites[0]][0]+1}" + (f" `{cites[0]}`" if not cites[0].startswith("#") else ""))
+        if ri is not None:
+            v = r.get("failure")
+            if v is not None and (not cites or len(cites) != (len(v) if isinstance(v, list) else 1)):
+                problems.append(f"{name}: `failure` must be a failure id or a list of them")
+            for c in cites:
+                if c not in authored:
+                    problems.append(f'{name}: cites failure "{c[:40]}", which no failure mode on the map has as its `id`')
+            if len(set(cites)) != len(cites):
+                problems.append(f"{name}: cites the same failure id twice")
+            if not cites and not _text(r.get("symptom")).strip():
+                problems.append(f"{name}: cites no failure id and has no `symptom` — say what on-call sees, "
+                                'or set "failure" to the id it handles')
+        for key in ("impact", "action"):
+            if not _text(r.get(key)).strip():
+                problems.append(f"{name}: `{key}` is required")
+        if not _text(r.get("detect")).strip():
+            quiet.append(cites[0] if len(cites) == 1 else (", ".join(cites) or f"row {ri+1}"))
+    if legacy_ids:
+        warnings.append(f"{len(legacy_ids)} failure mode(s) have no `id` (mode {', '.join(map(str, legacy_ids[:8]))}"
+                        f"{' …' if len(legacy_ids) > 8 else ''}) — the page numbers them; migrate: give each an id "
+                        "so its runbook row can cite it")
+    if legacy_fields:
+        warnings.append(f"{len(legacy_fields)} failure mode(s) carry detect / impact / action on the map "
+                        f"({', '.join(legacy_fields[:8])}{' …' if len(legacy_fields) > 8 else ''}) — the page moves them "
+                        'into the runbook; migrate: write them once in a `runbook` row with "failure": "<id>"')
+    if quiet:
+        warnings.append(f"no signal today for {len(quiet)} runbook row(s): {', '.join(q[:40] for q in quiet[:8])}"
+                        f"{' …' if len(quiet) > 8 else ''} — nothing fires before a user notices; if this work "
+                        "opened that gap it is a finding")
     if not _en(sec.get("ok")):
         for link, a, b in _links(systems):
             if not covered & {link, a, b}:
@@ -647,7 +780,7 @@ def main():
         if len(fail_warnings) > 12:
             print(f"    … and {len(fail_warnings) - 12} more", file=sys.stderr)
     if not total:
-        print("ok — context, components, before/after, boundary map, failure modes and register checked. "
+        print("ok — context, components, before/after, boundary map, failure modes, runbook and register checked. "
               "Diagrams are checked in the browser (pipeline §6).")
         return 0
 

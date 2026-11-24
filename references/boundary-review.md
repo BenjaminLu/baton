@@ -10,11 +10,17 @@ ship.
 and name what was checked. Never invent a risk to fill the section; a padded
 review teaches the reader to skip it.
 
-Two lists live on the map, with different rules. **Findings** (§2) are few
-and admission-tested: what this work broke or left open. **Failure modes**
-(§3) are exhaustive: every way each boundary can fail, what fires, what the
-user sees and what on-call does — the runbook. "No finding" never means "no
-failure modes".
+Three lists end the packet, with different rules, and **each fact has one
+home**:
+
+| list | lives | says | rule |
+|---|---|---|---|
+| **findings** (§2) | pins on the map | what this work broke or left open | few, admission-tested |
+| **failure modes** (§3) | rows under the map | id · where (`at`) · what fails (`mode`) · `state` · evidence (`ref`) | exhaustive |
+| **runbook** (§3) | rows after the failure modes | for each failure id: what fires (`detect`), what the user sees (`impact`), what to do (`action`) | exactly one row per failure id |
+
+Detection and action are written once, in the runbook, never on the map —
+written twice they drift. "No finding" never means "no failure modes".
 
 ## 1. Find the boundaries
 
@@ -109,16 +115,38 @@ walk the modes below and keep each one that can happen there:
 | auth and expiry | an expired token or certificate, a revoked key, a clock skew past the window |
 | version skew | old client + new server, a field the other side does not know yet |
 
-**One row per mode, six columns:**
+**One failure row per mode, on the map** (`failures[]`):
 
 | field | what it says |
 |---|---|
-| `mode` | what fails, at this boundary — "FCM returns `UNREGISTERED` for a token" |
-| `detect` | the signal that fires **before a user complains**: a metric, a log line, an alert, a query. Name it as it exists (`push_send_errors_total{code="UNREGISTERED"}`). When nothing detects it, leave `detect` out — the page prints **"no signal today"**, and that gap is itself worth a finding if this work opened it |
+| `id` | the key the runbook cites — short, stable, `[A-Za-z0-9][A-Za-z0-9_.-]*` up to 64 characters, unique in the packet: `fcm-unregistered` |
+| `at` | the system id, or `a>b` for a link the map draws |
+| `mode` | what fails, at this boundary, in one line — "FCM returns `UNREGISTERED` for a token" |
+| `ref` | the evidence: a SHA-pinned permalink `https://github.com/<owner>/<repo>/blob/<sha>/<path>#La-Lb`, or a doc URL. No code line to point at → leave it out; the page prints "no code reference" |
+| `state` | `handled` — code handles it (and `ref` points at that code); `detected` — something notices (and its runbook row's `detect` names it) but nothing handles it; `unhandled` — neither |
+
+**One runbook row per failure id** (`runbook[]`), the only place these are
+written:
+
+| field | what it says |
+|---|---|
+| `failure` | the failure id it answers (or a list, when one procedure answers several modes) |
+| `detect` | the signal that fires **before a user complains**: a metric, a log line, an alert, a query. Name it as it exists (`push_send_errors_total{code="UNREGISTERED"}`). When nothing detects it, leave `detect` out — the page prints **"no signal today"**, `verify.py` lists it as a warning, and that gap is itself worth a finding if this work opened it |
 | `impact` | what the user sees — "the phone never gets the notification" |
 | `action` | the runbook step: retry with backoff, mark the token invalid, page on-call, repair the data (and how) |
-| `ref` | the evidence: a SHA-pinned permalink `https://github.com/<owner>/<repo>/blob/<sha>/<path>#La-Lb`, or a doc URL. No code line to point at → leave it out; the page prints "no code reference" |
-| `state` | `handled` — code handles it (and `ref` points at that code); `detected` — something notices (and `detect` names it) but nothing handles it; `unhandled` — neither |
+| `symptom` | optional: the error text or report on-call meets first ("users report `E_SYNC_409`"). Required on a row that cites no failure id — a symptom whose mode is not known yet |
+
+`verify.py` holds the link: every failure id is cited by exactly one runbook
+row, every cited id is a failure on the map, and a `detect` / `impact` /
+`action` written on a failure row that a runbook row also cites fails as two
+homes for one fact. On the page each map row's id opens its runbook row and
+each runbook row's ↑ returns to the mode on the map.
+
+**Packets written before the runbook.** A failure row with no `id` and its own
+`detect` / `impact` / `action` still renders: the page numbers it `#<position>`
+and moves those fields into a generated runbook row. `verify.py` passes it with
+a warning to migrate — give the row an `id`, move the three fields into a
+`runbook` row citing it.
 
 **Verify every `ref` line from source.** Re-locate the line at the pinned SHA
 (`git grep -n '<pattern>' <sha> -- <path>`) before linking; a permalink to the
@@ -147,10 +175,10 @@ code does not exist yet, `"planned": true` — the page prints "not built yet",
 so a designed retry is never read as a shipped one. `ref` may then be the
 document's URL.
 
-**Feeding the runbook.** The rows *are* the runbook: copy them into the
-context's `## Boundary review` as a table (§6), so a receiving agent — or the
-person on call at 3 a.m. — can answer "what do I do when X fails" without
-opening the page. On the `eli5` register write `impact` and `action` in plain
+**Feeding the context.** Copy the runbook into the context's
+`## Boundary review` as one table keyed by failure id (§6), so a receiving
+agent — or the person on call at 3 a.m. — can answer "what do I do when X
+fails" without opening the page. On the `eli5` register write `impact` and `action` in plain
 words ("the notification is not delivered; the app stops trying that phone");
 signal names in `detect` stay marked as terms. Write `hans` for `action` by hand
 rather than letting `render.py` derive it: OpenCC turns 呼叫 on-call ("page")
@@ -174,10 +202,14 @@ what flows on each link (`hops`).
 - **No boundary crossed:** the map still lists the component touched and
   `ok` says why nothing crosses (e.g. a pure UI or docs change).
 - **Failure modes** go in `failures` on the same section (§3); the page draws
-  them under the map as one compact table per boundary, and clicking a system
-  or link on the map highlights its rows. Required on the `engineer` register
-  whenever the map crosses a boundary; `"failures": []` says "none apply" out
-  loud and still warns per uncovered link unless `ok` explains why.
+  them under the map as one compact table per boundary (id · mode · evidence
+  · state), and clicking a system or link on the map highlights its rows and
+  their runbook rows. Required on the `engineer` register whenever the map
+  crosses a boundary; `"failures": []` says "none apply" out loud and still
+  warns per uncovered link unless `ok` explains why.
+- **The runbook** goes in `runbook` on the same section (§3); the page draws it
+  after the failure modes, in the same order, one row per failure id:
+  signal · what the user sees · what to do.
 
 On the `eli5` register the text says what the user would experience; the
 mechanism stays in the context.
@@ -205,6 +237,6 @@ that depends on code not yet written is marked as such.
 
 Layer (b) carries `## Boundary review` with: the boundaries found, each lens's
 result per boundary (finding, or "n/a because …"), the facts verified and
-their sources, and the PR comments from §5, and the failure-mode table of §3 (boundary, mode, detect,
-impact, action, ref, state). `verify.py` checks that both the section and this
+their sources, and the PR comments from §5, and the runbook of §3 as one table keyed by
+failure id (id, boundary, mode, state, detect, impact, action, ref). `verify.py` checks that both the section and this
 heading exist.
