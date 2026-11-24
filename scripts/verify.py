@@ -373,7 +373,9 @@ def _js_str(v):
 
 def _text(v):
     """Text the page would print for an i18n field: a string or an i18n dict."""
-    return _en(v) if isinstance(v, (str, dict)) else ""
+    if isinstance(v, dict):
+        return v["en"] if isinstance(v.get("en"), str) else ""
+    return v if isinstance(v, str) else ""
 
 
 def _links(systems):

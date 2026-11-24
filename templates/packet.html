@@ -473,7 +473,8 @@ table.fmt{width:100%;min-width:44rem;border-collapse:separate;border-spacing:0;f
 table.fmt th{font-size:.74rem;font-weight:600;color:var(--muted);text-align:left;padding:.4rem .5rem;
   border-bottom:1px solid var(--rule-strong);vertical-align:bottom}
 table.fmt td{padding:.55rem .5rem;border-bottom:1px solid var(--rule);vertical-align:top;line-height:1.45;overflow-wrap:break-word}
-table.fmt td.mode{font-weight:600;width:20%} table.fmt td.ev{width:13%} table.fmt td.st{width:8.5rem}
+table.fmt td.mode{font-weight:600;width:17%} table.fmt td.ev{width:8.5rem} table.fmt td.st{width:7rem}
+html:not(:lang(en)) table.fmt thead th{word-break:keep-all}
 table.fmt td code{word-break:normal;overflow-wrap:break-word}
 table.fmt .ktag{margin-right:0;white-space:normal}
 table.fmt .badge{position:static;display:inline-block;margin-left:.35rem;vertical-align:middle;width:1.3rem;height:1.3rem;
@@ -868,10 +869,10 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
     proof:W3('Proof','證據','证据'), see:W3('see card','看卡片','看卡片'),
     verified:W3('verified','已驗證','已验证'), unknown:W3('state not given','未標示狀態','未标示状态'), 'code-only':W3('code only','只有程式碼','只有代码'),
     absent:W3('absent','沒有證據','没有证据'),
-    fmodes:W3('Failure modes — the runbook','失效模式 —— 也是 runbook','失效模式 —— 也是 runbook'),
-    fmcap:W3('Every way each boundary can fail: the signal that fires first, what the user sees, what on-call does. Click a system or link on the map to mark its rows.',
-             '每個邊界會怎麼壞：最先響的訊號、使用者看到什麼、on-call 要做什麼。點地圖上的系統或連線，標出它的那幾列。',
-             '每个边界会怎么坏：最先响的信号、用户看到什么、on-call 要做什么。点地图上的系统或连线，标出它的那几行。'),
+    fmodes:W3('Failure modes — the runbook','失效模式與處置（runbook）','失效模式与处置（runbook）'),
+    fmcap:W3('Every way each boundary can fail: the signal that fires first, what the user sees, what on-call does. Select a system or link on the map to mark its rows.',
+             '每個邊界會怎麼壞：最先響的訊號、使用者看到什麼、on-call 要做什麼。點選地圖上的系統或連線，標出它的那幾列。',
+             '每个边界会怎么坏：最先响的信号、用户看到什么、on-call 要做什么。点选地图上的系统或连线，标出它的那几行。'),
     fmode:W3('Failure mode','失效模式','失效模式'), fdetect:W3('Signal before a user notices','使用者發現前的訊號','用户发现前的信号'),
     fimpact:W3('What the user sees','使用者看到什麼','用户看到什么'), faction:W3('Runbook','處置（runbook）','处置（runbook）'),
     fref:W3('Evidence','證據','证据'), fstate:W3('State','狀態','状态'),
@@ -1003,7 +1004,7 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
   }
   function refLabel(u){
     const g=/^https:\/\/(?:www\.)?github\.com(?::443)?\/[^\/]+\/[^\/]+\/(?:blob|blame|raw)\/[^\/]+\/([^#?]+)(?:\?[^#]*)?(?:#L(\d+)(?:C\d+)?(?:-L(\d+)(?:C\d+)?)?)?/i.exec(u);
-    if(g){ const f=g[1].split('/').pop(); return f+(g[2]?':'+g[2]+(g[3]?'–'+g[3]:''):''); }
+    if(g){ const f=g[1].replace(/\/$/,'').split('/').pop()||g[1]; return f+(g[2]?':'+g[2]+(g[3]?'–'+g[3]:''):''); }
     const m=/^https:\/\/([^\/?#]+)([^?#]*)/i.exec(u); if(!m) return u;
     const path=(m[2]||'').replace(/\/$/,'');
     return m[1]+(path.length>28?'/…'+path.slice(-24):path);
@@ -1032,14 +1033,14 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
     h+=tscroll(KL.fmodes,lang)+'<table class="fmt"><thead><tr>'+C.map(c=>'<th scope="col">'+E(c)+'</th>').join('')+'</tr></thead>';
     keys.forEach(k=>{
       // Worst first inside a boundary: unhandled, then detected, then handled.
-      const RANK={unhandled:0,detected:1,handled:2};
+      const RANK=Object.assign(Object.create(null),{unhandled:0,detected:1,handled:2});
       const rank=f=>(typeof f.state==='string'&&f.state in RANK)?RANK[f.state]:-1;
       const rows=FM.filter(f=>String(f.at==null?'':f.at)===k).map((f,i)=>[f,i])
         .sort((a,b)=>rank(a[0])-rank(b[0])||a[1]-b[1]).map(x=>x[0]);
       const cnt=Object.create(null); rows.forEach(f=>{ const st=(typeof f.state==='string'&&FSTATE[f.state])?f.state:'unknown'; cnt[st]=(cnt[st]||0)+1; });
       h+='<tbody class="fgroup" data-fg="'+E(k)+'"><tr class="fgh"><th colspan="6" scope="rowgroup"><span class="fgn">'+
         softBreaks(rich(label(k)))+'</span><span class="fct">'+
-        ['handled','detected','unhandled','unknown'].filter(x=>cnt[x]).map(x=>cnt[x]+' '+pick(KL['fs-'+x],lang)).join(' · ')+
+        ['unhandled','detected','handled','unknown'].filter(x=>cnt[x]).map(x=>cnt[x]+' '+pick(KL['fs-'+x],lang)).join(' · ')+
         '</span></th></tr>';
       rows.forEach(f=>{
         const st=(typeof f.state==='string'&&FSTATE[f.state])?f.state:'unknown';
