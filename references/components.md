@@ -14,7 +14,7 @@ that fits, never by trimming words until the counter stops.
 | you are showing | component | limits |
 |---|---|---|
 | a change, a fix, a claim, a failure path | `chain` | 3–6 nodes, code labels ≤ 24 chars, hop labels ≤ 16 |
-| where systems meet and what is wrong there | `boundary` (always last) | ≥ 2 systems, every pin links a `chain` |
+| where systems meet, what is wrong there, and how each one fails | `boundary` (always last) | ≥ 2 systems, every pin links a `chain`, a `failures` row per failure mode |
 | old vs new, option vs option | `compare` | ≤ 6 rows of [dimension, from, to] |
 | cases × properties, claims × proof | `matrix` | ≤ 12 rows, one mark per cell |
 | an order of operations, a rollout | `steps` | 3–5 steps |
@@ -78,8 +78,35 @@ green: checked and fine. See `boundary-review.md` for how findings are chosen.
  "sub":{"app":"X-INSTALL-ID"}, "hops":{"0":"HTTPS"},
  "findings":[{"n":1,"at":"res" | "res>dev","lens":"coexist","tone":"warn",
               "title":i18n,"card":"<en heading of the chain card that draws it>"}],
- "ok":i18n}                                   // only when findings is empty
+ "ok":i18n,                                   // only when findings is empty
+ "failures":[{"at":"push>fcm",               // a system id or an "a>b" link, like a pin
+              "mode":i18n,                    // what fails
+              "detect":i18n,                  // the signal before a user complains; omit → "no signal today"
+              "impact":i18n,                  // what the user sees
+              "action":i18n,                  // the runbook step
+              "ref":"https://github.com/<owner>/<repo>/blob/<sha>/<path>#L12-L18",  // omit → "no code reference"
+              "state":"handled|detected|unhandled",
+              "introduced":true,              // optional: this work opened the mode
+              "finding":1,                    // the pin that draws it — required when introduced + unhandled
+              "source":i18n,                  // proposal route: the document sentence it comes from
+              "planned":true}]}               // proposal route: the code does not exist yet
 ```
+
+`failures` is the failure-mode table (`boundary-review.md` §3): exhaustive,
+one row per way a boundary fails, rendered under the map grouped by
+boundary as mode · signal · user impact · runbook · evidence · state.
+Clicking a system or link on the map highlights its rows.
+
+- `state` is one of `handled` (needs `ref` or, on a proposal, `source`),
+  `detected` (needs `detect`), `unhandled`. No default.
+- `ref` is `https://` only, opens in a new tab through the page's link
+  sanitizer (`rel="noopener noreferrer"`); a GitHub `blob` link must be pinned
+  to a commit SHA, never a branch.
+- Required on the `engineer` register (`verify.py` fails a boundary section
+  without the key; on `eli5` it warns). `[]` is allowed and warns for each
+  link that no row — on the link or on either end system — and no `ok`
+  covers. A packet written before this field gets that one clear message,
+  never a crash.
 
 ## compare, matrix, steps, stats
 

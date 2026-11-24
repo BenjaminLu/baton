@@ -108,7 +108,14 @@ six lenses: identity, truth, effect, dependency, coexist (old/new versions),
 edges (`references/boundary-review.md`). Each real finding is a numbered pin
 on the node or link where it lives and has its own `chain` card; links with
 no finding render green. When nothing is wrong, the map says what was checked
-and that it is fine — never a padded finding. For a pull request, findings are
+and that it is fine — never a padded finding. Under the map sits the **failure-mode
+table** — for every system and link: each way it fails (down, slow, partial,
+error codes, dropped / duplicated / reordered messages, stale data, expiry,
+version skew), the signal that fires before a user complains ("no signal
+today" when none does), what the user sees, the runbook action, a SHA-pinned
+code reference, and `handled` / `detected` / `unhandled`. It is exhaustive,
+not admission-tested; a mode that is unhandled *and* introduced by this work
+is also a pin. For a pull request, findings are
 also written as paste-ready review comments in the context; posting them is
 outward-facing and waits for the user to ask.
 
@@ -221,6 +228,7 @@ then how to pull more: the specs it cites, the code that would implement it.
      open questions
    - *Boundary map* — always last, every route
      (`references/boundary-review.md`); "no issue" is a complete answer
+     for findings, never for the failure-mode table under it
 5. **Verify** — `verify.py --register <engineer|eli5>`; fix by finding a real
    word, never by deleting the sentence. Then the real-browser check, pipeline
    §6 — non-skippable; a packet once shipped on script checks alone was

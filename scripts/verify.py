@@ -38,7 +38,7 @@ REFUSAL = ("say you do not know", "say you don't know", "說不知道", "说不�
 SKIP_KEYS = {"mermaid", "svg", "id", "kind", "tone", "filename", "range",
              "repo", "branch", "format_version", "layer", "glossary",
              "layer_note", "k", "was", "now", "method", "table", "op",
-             "guard", "summary", "ref"}
+             "guard", "summary", "ref", "at", "state"}
 
 
 def load(path):
@@ -344,6 +344,100 @@ def check_boundary_review(html, data):
     return problems
 
 
+FAILURE_STATES = {"handled", "detected", "unhandled"}
+GITHUB_BLOB = re.compile(r"(?i)^https://github\.com/[^/]+/[^/]+/blob/([^/]+)/[^#]+(#L\d+(?:-L\d+)?)?$")
+
+
+def safe_ref(url):
+    """A failure mode's evidence link: https only, no control character or
+    space, no raw quote / angle bracket / backtick (the page's safeRef())."""
+    if not isinstance(url, str) or safe_href(url) is None or not re.match(r"(?i)^https://", url):
+        return None
+    return None if re.search(r"[\"'<>`]", url) else url
+
+
+def _links(systems):
+    """The links the map draws: each system to the next one."""
+    ids = [n.get("id") for n in systems or []]
+    return [f"{a}>{b}" for a, b in zip(ids, ids[1:])]
+
+
+def check_failures(data, register="engineer"):
+    """The failure-mode table under the boundary map (boundary-review.md §3).
+
+    Returns (problems, warnings). Problems fail the run; warnings print and
+    leave the exit code alone. A packet written before `failures` existed gets
+    one clear sentence telling the author what to add, never a traceback.
+    """
+    sections = (data or {}).get("sections") or []
+    if not sections or not isinstance(sections[-1], dict) or sections[-1].get("kind") != "boundary":
+        return [], []          # check_boundary_review already reports the missing map
+    sec = sections[-1]
+    problems, warnings = [], []
+    systems = sec.get("systems") or []
+    ids = _ids(systems)
+    if "failures" not in sec:
+        msg = ("the boundary map has no `failures` — list every failure mode per system and link "
+               "(mode, detect, impact, action, ref, state; boundary-review.md §3), or "
+               '`"failures": []` when none apply')
+        (problems if register == "engineer" and len(ids) >= 2 else warnings).append(msg)
+        return problems, warnings
+    rows = sec.get("failures")
+    if not isinstance(rows, list):
+        return ["`failures` must be a list of failure modes"], warnings
+    pins = {f.get("n") for f in sec.get("findings") or [] if isinstance(f, dict)}
+    covered = set()
+    for i, f in enumerate(rows):
+        if not isinstance(f, dict):
+            problems.append(f"failure mode {i+1}: must be an object")
+            continue
+        label = f'failure mode {i+1} ("{_en(f.get("mode"))[:40]}")'
+        at = str(f.get("at") or "")
+        ends = at.split(">") if ">" in at else [at]
+        if len(ends) > 2 or not all(e in ids for e in ends):
+            problems.append(f'{label}: `at` "{at}" is not a system id or an "a>b" link on the map')
+        else:
+            covered.add(at)
+        for key in ("mode", "impact", "action"):
+            if not _en(f.get(key)).strip():
+                problems.append(f"{label}: `{key}` is required")
+        st = f.get("state")
+        if st in (None, ""):
+            problems.append(f"{label}: no `state` — set one of {sorted(FAILURE_STATES)}; there is no default")
+        elif st not in FAILURE_STATES:
+            problems.append(f'{label}: state "{st}" is not one of {sorted(FAILURE_STATES)}')
+        ref = f.get("ref")
+        if ref is not None:
+            if safe_ref(ref) is None:
+                problems.append(f"{label}: `ref` {str(ref)[:60]!r} is not a plain https:// URL — the page "
+                                "refuses it (no other scheme, control character, space or raw quote)")
+            else:
+                m = GITHUB_BLOB.match(ref)
+                if re.match(r"(?i)^https://github\.com/[^/]+/[^/]+/blob/", ref):
+                    if not m or not re.fullmatch(r"[0-9a-f]{7,40}", m.group(1)):
+                        problems.append(f"{label}: `ref` is a GitHub link not pinned to a commit — use "
+                                        "/blob/<sha>/<path>#La-Lb; a branch link drifts")
+                    elif not m.group(2):
+                        warnings.append(f"{label}: `ref` names a file but no lines — add #La-Lb")
+        if st == "handled" and ref is None and not _en(f.get("source")):
+            problems.append(f"{label}: `handled` needs `ref` — the code line that handles it "
+                            "(or, on a proposal, the `source` sentence)")
+        if st == "detected" and not _en(f.get("detect")).strip():
+            problems.append(f"{label}: `detected` needs `detect` — the signal that notices it")
+        if "finding" in f and f["finding"] not in pins:
+            problems.append(f"{label}: `finding` {f['finding']!r} is not a pin on the map")
+        if f.get("introduced") and st == "unhandled" and "finding" not in f:
+            problems.append(f"{label}: unhandled and introduced by this work — that is a finding; "
+                            "give it a pin and set `finding` to its number")
+    if not _en(sec.get("ok")):
+        for link in _links(systems):
+            a, b = link.split(">")
+            if not covered & {link, a, b}:
+                warnings.append(f'link "{link}" has no failure mode listed and no `ok` line says why — '
+                                "list how it fails, or say in `ok` why nothing can")
+    return problems, warnings
+
+
 # The page's link rule (templates/packet.html rich() / safeHref()), mirrored:
 # default-deny. Only http(s):// and mailto: render as links, and a URL with
 # any control character or space is refused, because browsers strip leading
@@ -474,17 +568,25 @@ def main():
     a = ap.parse_args()
 
     html, data = load(a.packet)
+    fail_problems, fail_warnings = check_failures(data, a.register)
     groups = [("context", check_context(html)), ("before/after", check_before_after(data)),
               ("components", check_components(data)),
               ("boundary review", check_boundary_review(html, data)),
+              ("failure modes", fail_problems),
               ("links", check_links(data)), ("svg", check_svg(data))]
     if a.register == "eli5":
         groups.append(("register",
                        check_register(data, (data or {}).get("glossary", []))))
 
     total = sum(len(p) for _, p in groups)
+    if fail_warnings:
+        print(f"baton: {len(fail_warnings)} warning(s) — failure modes:", file=sys.stderr)
+        for w in fail_warnings[:12]:
+            print(f"    - {w}", file=sys.stderr)
+        if len(fail_warnings) > 12:
+            print(f"    … and {len(fail_warnings) - 12} more", file=sys.stderr)
     if not total:
-        print("ok — context, components, before/after, boundary map and register checked. "
+        print("ok — context, components, before/after, boundary map, failure modes and register checked. "
               "Diagrams are checked in the browser (pipeline §6).")
         return 0
 

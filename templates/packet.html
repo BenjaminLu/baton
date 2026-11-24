@@ -454,6 +454,58 @@ button.act:disabled{opacity:.4;cursor:default}
 .bok{margin-top:1rem;border:1px solid var(--ok);border-left:4px solid var(--ok);border-radius:6px;padding:.7rem .9rem;
   line-height:1.55}
 .bok::before{content:"✓ ";color:var(--ok);font-weight:700}
+/* failure modes under the map: one compact table per boundary — the runbook */
+.fmodes{margin-top:1.4rem;border-top:1px solid var(--rule);padding-top:1rem}
+.fmodes>h4{font-family:var(--serif);font-size:1.12rem;font-weight:600;margin:0 0 .2rem}
+.fmodes>.fcap{margin:0 0 .9rem;font-size:.9rem;color:var(--muted);line-height:1.5}
+table.fmt tr.fgh th{text-align:left;padding:1rem .5rem .35rem;border-bottom:1px solid var(--rule-strong);
+  font-size:.95rem;font-weight:650;color:var(--fg)}
+table.fmt tr.fgh .fct{font-family:var(--mono);font-size:.7rem;color:var(--muted);font-weight:400;margin-left:.8rem;white-space:nowrap}
+table.fmt tbody.fgroup.on td,table.fmt tbody.fgroup.on th{background:var(--accent-tint)}
+table.fmt tbody.fgroup.on tr.fgh th{box-shadow:inset 4px 0 0 var(--accent)}
+table.fmt tbody.fgroup.on td:first-child{box-shadow:inset 4px 0 0 var(--accent)}
+table.fmt{width:100%;min-width:46rem;border-collapse:separate;border-spacing:0;font-size:.88rem}
+table.fmt th{font-size:.74rem;font-weight:600;color:var(--muted);text-align:left;padding:.4rem .5rem;
+  border-bottom:1px solid var(--rule-strong);vertical-align:bottom}
+table.fmt td{padding:.55rem .5rem;border-bottom:1px solid var(--rule);vertical-align:top;line-height:1.45;overflow-wrap:break-word}
+table.fmt td.mode{font-weight:600;width:20%} table.fmt td.ev{width:13%} table.fmt td.st{width:8.5rem}
+table.fmt td code{word-break:normal;overflow-wrap:anywhere}
+table.fmt .ktag{margin-right:0;white-space:normal}
+table.fmt .badge{position:static;display:inline-block;margin-left:.35rem;vertical-align:middle;width:1.3rem;height:1.3rem;
+  line-height:1.3rem;font-size:.72rem}
+.nosig{color:var(--warn-ink);font-weight:650} .nosig::before{content:"⚠ "}
+.noref{color:var(--muted);font-style:italic;font-size:.82rem}
+.fplan{display:inline-block;margin-left:.35rem;font-family:var(--mono);font-size:.66rem;letter-spacing:.05em;
+  text-transform:uppercase;color:var(--muted);border:1px dashed var(--rule-strong);border-radius:3px;padding:0 .3rem;font-weight:400}
+.fsrc{display:block;margin-top:.3rem;font-size:.8rem;color:var(--muted);font-style:italic}
+a.fref{font-family:var(--mono);font-size:.8rem;overflow-wrap:anywhere}
+a.fref::after{content:" ↗";font-family:var(--sans)}
+.bmap .fm{cursor:pointer}
+.bmap .cnode.fm:hover,.bmap .cnode.fm.on{border-color:var(--accent)}
+.bmap .carrow.fm:hover .hl,.bmap .carrow.fm.on .hl{color:var(--accent)}
+.bmap .fm:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.bmap .fn-c{display:block;font-family:var(--mono);font-size:max(12px,.62rem);color:var(--muted);margin-top:.2rem;font-weight:400;
+  white-space:nowrap;text-align:center}
+/* A phone has no room for six columns: each mode becomes a short card whose
+   cells carry their own label, so nothing scrolls sideways at all. */
+@media (max-width:40rem){
+  .fmodes .tscroll{overflow-x:visible}
+  table.fmt{min-width:0}
+  table.fmt thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+  table.fmt,table.fmt tbody,table.fmt tr,table.fmt td,table.fmt th{display:block;width:auto}
+  table.fmt tr.fgh{border:0;padding:0;margin:0;background:none}
+  table.fmt tr.fgh th{padding:.9rem 0 .4rem;border:0}
+  table.fmt tbody.fgroup.on{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px;background:var(--accent-tint)}
+  table.fmt tbody.fgroup.on td,table.fmt tbody.fgroup.on th,
+  table.fmt tbody.fgroup.on td:first-child,table.fmt tbody.fgroup.on tr.fgh th{box-shadow:none;background:none}
+  table.fmt tbody.fgroup.on tr.fgh th{padding-left:.5rem}
+  table.fmt tbody.fgroup.on tr:not(.fgh){margin:0 .4rem .55rem}
+  table.fmt tr{border:1px solid var(--rule);border-radius:6px;padding:.4rem .6rem;margin-bottom:.55rem;background:var(--card)}
+  table.fmt td{border:0;padding:.2rem 0}
+  table.fmt td.mode{width:auto;font-size:.95rem} table.fmt td.ev,table.fmt td.st{width:auto}
+  table.fmt td:not(.mode)::before{content:attr(data-l);display:block;font-family:var(--mono);font-size:.66rem;
+    letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+}
 /* compare (from → to) */
 /* A table wider than its card scrolls inside this box, never the page. */
 .tscroll{overflow-x:auto;max-width:100%;-webkit-overflow-scrolling:touch}
@@ -790,7 +842,21 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
     why:W3('why','為什麼','为什么'), fix:W3('why this fixes it','為什麼這樣就好','为什么这样就好'),
     proof:W3('Proof','證據','证据'), see:W3('see card','看卡片','看卡片'),
     verified:W3('verified','已驗證','已验证'), unknown:W3('state not given','未標示狀態','未标示状态'), 'code-only':W3('code only','只有程式碼','只有代码'),
-    absent:W3('absent','沒有證據','没有证据')
+    absent:W3('absent','沒有證據','没有证据'),
+    fmodes:W3('Failure modes — the runbook','失效模式 —— 也是 runbook','失效模式 —— 也是 runbook'),
+    fmcap:W3('Every way each boundary can fail: the signal that fires first, what the user sees, what on-call does. Click a system or link on the map to mark its rows.',
+             '每個邊界會怎麼壞：最先響的訊號、使用者看到什麼、on-call 要做什麼。點地圖上的系統或連線，標出它的那幾列。',
+             '每个边界会怎么坏：最先响的信号、用户看到什么、on-call 要做什么。点地图上的系统或连线，标出它的那几行。'),
+    fmode:W3('Failure mode','失效模式','失效模式'), fdetect:W3('Signal before a user notices','使用者發現前的訊號','用户发现前的信号'),
+    fimpact:W3('What the user sees','使用者看到什麼','用户看到什么'), faction:W3('Runbook','處置（runbook）','处置（runbook）'),
+    fref:W3('Evidence','證據','证据'), fstate:W3('State','狀態','状态'),
+    'fs-handled':W3('handled','已處理','已处理'), 'fs-detected':W3('detected','有偵測、未處理','有侦测、未处理'),
+    'fs-unhandled':W3('unhandled','未處理','未处理'), 'fs-unknown':W3('state not given','未標示狀態','未标示状态'),
+    nosig:W3('no signal today','目前沒有訊號','目前没有信号'), noref:W3('no code reference','沒有程式碼出處','没有代码出处'),
+    refused:W3('link refused','連結被拒','链接被拒'), fplan:W3('not built yet','尚未實作','尚未实现'),
+    fsrc:W3('from the document','出自文件','出自文件'), fpin:W3('finding','發現','发现'),
+    fmFor:W3('Failure modes of','失效模式：','失效模式：'),
+    fmOne:W3('mode','種失效','种失效'), fmMany:W3('modes','種失效','种失效')
   };
   const sub=(v,lang)=>{
     if(v==null) return '';
@@ -828,8 +894,10 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
     nodes.forEach((nd,i)=>{
       const st=hot.has(nd.id)?(after?'good':'bad'):'';
       const badge=(opts.badges||{})[nd.id];
-      h+='<div class="cnode k-'+E(nd.kind||'service')+' '+st+'" style="grid-column:'+(2*i+1)+';grid-row:1">'+
-         (badge?badge:'')+'<div class="nm">'+softBreaks(rich(pick(nd.name,lang)))+'</div>'+sub((row.sub||{})[nd.id],lang)+'</div>';
+      const fa=opts.fm?opts.fm(nd.id):'';
+      h+='<div class="cnode k-'+E(nd.kind||'service')+' '+st+(fa?' fm':'')+'"'+fa+' style="grid-column:'+(2*i+1)+';grid-row:1">'+
+         (badge?badge:'')+'<div class="nm">'+softBreaks(rich(pick(nd.name,lang)))+'</div>'+sub((row.sub||{})[nd.id],lang)+
+         (fa?opts.fmCount(nd.id):'')+'</div>';
       if(whyAt===nd.id && row.why.text){
         const left=i<n/2; const span=Math.min(3,2*n+1-(2*i));
         const gc=left?((2*i+1)+' / span '+Math.max(1,span)):(Math.max(1,2*i-1)+' / '+(2*i+2));
@@ -842,8 +910,10 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
       const hb=(opts.linkBadges||{})[i];
       if(hb) ac='bad'; else if(opts.okLinks && i<n-1) ac='okl';
       const hl=(row.hops||{})[i];
-      h+='<div class="carrow '+ac+'" style="grid-column:'+(2*i+2)+';grid-row:1">'+(hb?hb:'')+
-         (hl!=null?'<div class="hl">'+softBreaks(E(typeof hl==='string'?hl:pick(hl,lang)))+'</div>':'')+'<div class="ln"></div></div>';
+      const la=(opts.fm&&i<n-1)?opts.fm(nd.id+'>'+nodes[i+1].id):'';
+      h+='<div class="carrow '+ac+(la?' fm':'')+'"'+la+' style="grid-column:'+(2*i+2)+';grid-row:1">'+(hb?hb:'')+
+         (hl!=null?'<div class="hl">'+softBreaks(E(typeof hl==='string'?hl:pick(hl,lang)))+'</div>':'')+'<div class="ln"></div>'+
+         (la?opts.fmCount(nd.id+'>'+nodes[i+1].id):'')+'</div>';
     });
     // One span: as bare flex children, text and <code> would each shrink to a column.
     if(row.outcome!=null) h+='<div class="cout" style="grid-column:'+(2*n+1)+';grid-row:1"><span>'+softBreaks(rich(pick(row.outcome,lang)))+'</span></div>';
@@ -876,8 +946,14 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
       if(String(f.at).includes('>')){ const a=String(f.at).split('>')[0]; if(ix[a]!=null) lb[ix[a]]=(lb[ix[a]]||'')+b; }
       else nb[f.at]=(nb[f.at]||'')+b;
     });
+    const FM=Array.isArray(s.failures)?s.failures.filter(f=>f&&typeof f==='object'):[];
+    const fmAt=Object.create(null); FM.forEach(f=>{ const k=String(f.at==null?'':f.at); fmAt[k]=(fmAt[k]||0)+1; });
+    const nm=Object.create(null); (s.systems||[]).forEach(n=>nm[n.id]=pick(n.name,lang));
+    const fmName=k=>pick(KL.fmFor,lang)+' '+String(k).split('>').map(x=>nm[x]!=null?nm[x]:x).join(' → ');
     let h='<div class="bmap">'+laneHTML(s.systems||[], {sub:s.sub||{}, hops:s.hops||{}, hot:[]}, 'map', lang,
-      {badges:nb, linkBadges:lb, okLinks:true})+'</div>';
+      {badges:nb, linkBadges:lb, okLinks:true,
+       fm:k=>fmAt[k]?' data-at="'+E(k)+'" role="button" tabindex="0" aria-label="'+E(fmName(k))+'"':'',
+       fmCount:k=>'<span class="fn-c">'+E(fmAt[k])+' '+pick(fmAt[k]===1?KL.fmOne:KL.fmMany,lang)+'</span>'})+'</div>';
     if(F.length){
       h+='<div class="bfind">'+F.map(f=>{
         const target=secs.findIndex(x=>x.kind==='chain' && f.card && pick(x.heading,'en')===f.card);
@@ -888,7 +964,81 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
     } else {
       h+='<div class="bok">'+rich(pick(s.ok,lang))+'</div>';
     }
+    return h+failuresHTML(s, FM, lang);
+  }
+  // The failure-mode table (boundary-review.md §3): every mode of every
+  // boundary, grouped in map order. Evidence links pass the same default-deny
+  // rule as links in text, narrowed to https, and open in a new tab.
+  function safeRef(u){
+    if(typeof u!=='string') return null;
+    const h=safeHref(u);
+    return (h!=null && /^https:\/\//i.test(h) && !/["'<>`]/.test(h)) ? h : null;
+  }
+  function refLabel(u){
+    const g=/^https:\/\/github\.com\/[^\/]+\/[^\/]+\/blob\/[^\/]+\/([^#?]+)(?:#L(\d+)(?:-L(\d+))?)?/i.exec(u);
+    if(g){ const f=g[1].split('/').pop(); return f+(g[2]?':'+g[2]+(g[3]?'–'+g[3]:''):''); }
+    const m=/^https:\/\/([^\/?#]+)([^?#]*)/i.exec(u); if(!m) return u;
+    const path=(m[2]||'').replace(/\/$/,'');
+    return m[1]+(path.length>28?'/…'+path.slice(-24):path);
+  }
+  function refHTML(f, lang){
+    let h;
+    if(f.ref==null) h='<span class="noref">'+pick(KL.noref,lang)+'</span>';
+    else { const href=safeRef(f.ref);
+      h=href==null?'<span class="noref">'+pick(KL.refused,lang)+'</span>':
+        '<a class="fref" href="'+E(href)+'" target="_blank" rel="noopener noreferrer" title="'+E(href)+'">'+
+        softBreaks(E(refLabel(href)))+'</a>'; }
+    if(f.source!=null) h+='<span class="fsrc">'+pick(KL.fsrc,lang)+' “'+rich(pick(f.source,lang))+'”</span>';
     return h;
+  }
+  const FSTATE={handled:'ok',detected:'warn',unhandled:'risk'};
+  function failuresHTML(s, FM, lang){
+    if(!FM.length) return '';
+    const sys=s.systems||[]; const name=Object.create(null); sys.forEach(n=>name[n.id]=pick(n.name,lang));
+    const order=[]; sys.forEach((n,i)=>{ order.push(String(n.id)); if(i<sys.length-1) order.push(n.id+'>'+sys[i+1].id); });
+    const keys=[...new Set(FM.map(f=>String(f.at==null?'':f.at)))]
+      .sort((a,b)=>(order.indexOf(a)<0?1e9:order.indexOf(a))-(order.indexOf(b)<0?1e9:order.indexOf(b)));
+    const label=k=>k.includes('>')?k.split('>').map(x=>name[x]!=null?name[x]:x).join(' → '):(name[k]!=null?name[k]:k);
+    const C=['fmode','fdetect','fimpact','faction','fref','fstate'].map(c=>pick(KL[c],lang));
+    let h='<div class="fmodes"><h4>'+pick(KL.fmodes,lang)+'</h4><p class="fcap">'+pick(KL.fmcap,lang)+'</p>';
+    // One table, one <tbody> per boundary: the columns line up down the whole list.
+    h+=tscroll(KL.fmodes,lang)+'<table class="fmt"><thead><tr>'+C.map(c=>'<th scope="col">'+E(c)+'</th>').join('')+'</tr></thead>';
+    keys.forEach(k=>{
+      const rows=FM.filter(f=>String(f.at==null?'':f.at)===k);
+      const cnt={}; rows.forEach(f=>{ const st=FSTATE[f.state]?f.state:'unknown'; cnt[st]=(cnt[st]||0)+1; });
+      h+='<tbody class="fgroup" data-fg="'+E(k)+'"><tr class="fgh"><th colspan="6" scope="rowgroup"><span class="fgn">'+
+        softBreaks(rich(label(k)))+'</span><span class="fct">'+
+        ['handled','detected','unhandled','unknown'].filter(x=>cnt[x]).map(x=>cnt[x]+' '+pick(KL['fs-'+x],lang)).join(' · ')+
+        '</span></th></tr>';
+      rows.forEach(f=>{
+        const st=FSTATE[f.state]?f.state:'unknown';
+        const pin=f.finding!=null?'<span class="badge '+E(((s.findings||[]).find(x=>x&&x.n===f.finding)||{}).tone||'warn')+
+          '" title="'+E(pick(KL.fpin,lang)+' '+f.finding)+'">'+E(f.finding)+'</span>':'';
+        const d=pick(f.detect,lang);
+        h+='<tr><td class="mode" data-l="'+E(C[0])+'">'+rich(pick(f.mode,lang))+pin+
+          (f.planned?'<span class="fplan">'+pick(KL.fplan,lang)+'</span>':'')+'</td>'+
+          '<td data-l="'+E(C[1])+'">'+(String(d).trim()?rich(d):'<span class="nosig">'+pick(KL.nosig,lang)+'</span>')+'</td>'+
+          '<td data-l="'+E(C[2])+'">'+rich(pick(f.impact,lang))+'</td>'+
+          '<td data-l="'+E(C[3])+'">'+rich(pick(f.action,lang))+'</td>'+
+          '<td class="ev" data-l="'+E(C[4])+'">'+refHTML(f,lang)+'</td>'+
+          '<td class="st" data-l="'+E(C[5])+'"><span class="ktag '+(FSTATE[st]||'')+'">'+pick(KL['fs-'+st],lang)+'</span></td></tr>';
+      });
+      h+='</tbody>';
+    });
+    return h+'</table></div></div>';
+  }
+  // Clicking a system or link on the map marks its failure-mode rows.
+  function bindFailures(kb){
+    const pick1=k=>{
+      kb.querySelectorAll('.fm').forEach(x=>x.classList.toggle('on',x.dataset.at===k));
+      let first=null;
+      kb.querySelectorAll('.fgroup').forEach(g=>{ const on=g.dataset.fg===k; g.classList.toggle('on',on); if(on&&!first) first=g; });
+      if(first) first.scrollIntoView({block:'nearest',behavior:'smooth'});
+    };
+    kb.querySelectorAll('.bmap .fm').forEach(el=>{
+      el.addEventListener('click',()=>pick1(el.dataset.at));
+      el.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); pick1(el.dataset.at); } });
+    });
   }
   function compareHTML(s, lang){
     const c=s.cols||[];
@@ -1277,6 +1427,7 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
       const kb=el.querySelector('.kbox');
       if(kb){ kb.innerHTML=KR[s.kind](s,lang);
         if(s.kind==='chart') drawChart(kb,s,lang);
+        if(s.kind==='boundary') bindFailures(kb);
         kb.querySelectorAll('button[data-go]').forEach(b=>b.addEventListener('click',()=>go(+b.dataset.go))); }
       const cl=el.querySelector('[data-i=claim]'); if(cl) cl.innerHTML=rich(pick(s.claim,lang));
       const h=el.querySelector('[data-i=heading]'); if(h) h.textContent=pick(s.heading,lang);
