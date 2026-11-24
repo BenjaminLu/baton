@@ -20,7 +20,7 @@
   --rule-strong:#bfc0c0;   /* silver */
   --accent:#eb6c36;        /* atomic-tangerine — 1–2 focal points per diagram */
   --accent-tint:rgba(235,108,54,.08);
-  --link:#2e5aa8;--idlink:#2e5aa8;
+  --link:#2e5aa8;
   --amber:#b8915a;         /* mustard, from the series scale */
   --seal:#9c6b50;          /* rust-brown */
   --ok:#7c8f6f;            /* sage */
@@ -42,20 +42,20 @@
 @media (prefers-color-scheme:dark){
   :root{--bg:#2d3142;--card:#393e53;--card-2:#333849;--fg:#f5f5f5;--muted:#bfc0c0;
     --soft:#8e98ac;--rule:rgba(245,245,245,.12);--rule-strong:rgba(191,192,192,.25);
-    --accent:#f08a59;--accent-tint:rgba(240,138,89,.10);--link:#6a95d8;--idlink:#93b4ea;
+    --accent:#f08a59;--accent-tint:rgba(240,138,89,.10);--link:#93b4ea;
     --amber:#d3ad7a;--seal:#b88670;--ok:#9caf8f;
     --warn-ink:#d3ad7a;--risk-ink:#f39b84;--ok-ink:#a9bd9c;--on-ink:#2d3142;
     --shadow:0 1px 2px rgba(0,0,0,.45),0 12px 32px rgba(0,0,0,.4)}
 }
 :root[data-theme=dark]{color-scheme:dark;--bg:#2d3142;--card:#393e53;--card-2:#333849;--fg:#f5f5f5;--muted:#bfc0c0;
     --soft:#8e98ac;--rule:rgba(245,245,245,.12);--rule-strong:rgba(191,192,192,.25);
-    --accent:#f08a59;--accent-tint:rgba(240,138,89,.10);--link:#6a95d8;--idlink:#93b4ea;
+    --accent:#f08a59;--accent-tint:rgba(240,138,89,.10);--link:#93b4ea;
     --amber:#d3ad7a;--seal:#b88670;--ok:#9caf8f;
     --warn-ink:#d3ad7a;--risk-ink:#f39b84;--ok-ink:#a9bd9c;--on-ink:#2d3142;
     --shadow:0 1px 2px rgba(0,0,0,.45),0 12px 32px rgba(0,0,0,.4)}
 :root[data-theme=light]{color-scheme:light;--bg:#f5f5f5;--card:#ffffff;--card-2:#ececec;--fg:#2d3142;--muted:#4f5d75;
   --soft:#7a8399;--rule:rgba(45,49,66,.12);--rule-strong:#bfc0c0;
-  --accent:#eb6c36;--accent-tint:rgba(235,108,54,.08);--link:#2e5aa8;--idlink:#2e5aa8;
+  --accent:#eb6c36;--accent-tint:rgba(235,108,54,.08);--link:#2e5aa8;
   --amber:#b8915a;--seal:#9c6b50;--ok:#7c8f6f;
   --warn-ink:#7d5e34;--risk-ink:#a3432a;--ok-ink:#56684c;--on-ink:#ffffff;
   --shadow:0 1px 2px rgba(45,49,66,.06),0 10px 28px rgba(45,49,66,.06)}
@@ -477,13 +477,13 @@ table.fmt td.mode{font-weight:600} table.fmt td.ev{width:13rem} table.fmt td.st{
 table.fmt td.fid{width:11rem}
 table.fmt code.fidt{font-size:.78rem;overflow-wrap:anywhere;word-break:normal}
 /* The ID is the way into its runbook row; ↑ in the runbook is the way back. */
-a.fjump,a.fback{display:inline-flex;align-items:baseline;gap:.25rem;color:var(--idlink)!important;text-decoration:none!important;
+a.fjump,a.fback{display:inline-flex;align-items:baseline;gap:.25rem;color:var(--link)!important;text-decoration:none!important;
   border-radius:3px;min-height:1.5rem;padding:.05rem .1rem;max-width:100%}
 /* #steps: the page's `#steps a code{text-decoration:inherit}` would otherwise
    take the underline away, leaving colour as the only cue that this is a link. */
 #steps a.fjump code,#steps a.fback code{color:inherit;text-decoration:underline dotted;text-underline-offset:2px}
 #steps a.fjump:hover code,#steps a.fback:hover code{text-decoration-style:solid}
-a.fjump:focus-visible,a.fback:focus-visible{outline:2px solid var(--idlink);outline-offset:1px}
+a.fjump:focus-visible,a.fback:focus-visible{outline:2px solid var(--link);outline-offset:1px}
 .fja{font-family:var(--sans);font-weight:700}
 .fnorb{display:block;font-size:.78rem}
 table.rbt td.rbfor{width:30%}
@@ -500,7 +500,7 @@ table.rbt tr.on td{background:var(--accent-tint)}
 table.fmt tr[tabindex]:focus{outline:2px solid var(--accent);outline-offset:-2px}
 table.fmt tr.flash td{animation:fflash 1.6s ease-out}
 @keyframes fflash{from{background:var(--accent-tint)}to{background:transparent}}
-@media (prefers-reduced-motion:reduce){table.fmt tr.flash td{animation:none}}
+@media (prefers-reduced-motion:reduce){table.fmt tr.flash,table.fmt tr.flash td{animation:none}}
 html:not(:lang(en)) table.fmt thead th{word-break:keep-all}
 table.fmt td code{word-break:normal;overflow-wrap:anywhere}
 table.fmt .ktag{margin-right:0;white-space:normal}
@@ -553,6 +553,8 @@ a.fref::after{content:"\00a0↗";font-family:var(--sans)}
   table.rbt td.rbfor::before{display:none!important}
   table.rbt tr.on{outline:2px solid var(--accent);outline-offset:1px}
   table.fmt tr[tabindex]:focus{outline:3px solid var(--accent);outline-offset:3px}
+  table.rbt tr td:first-child{padding-left:0}
+  table.fmt tr.flash{animation:fflash 1.6s ease-out} table.fmt tr.flash td{animation:none}
   table.rbt tr.on td{background:none}
   table.fmt td{border:0;padding:.2rem 0}
   table.fmt td.mode{width:auto;font-size:.95rem} table.fmt td.ev,table.fmt td.st,table.fmt td.fid{width:auto}
@@ -907,8 +909,8 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
     absent:W3('absent','沒有證據','没有证据'),
     fmodes:W3('Failure modes','失效模式','失效模式'),
     fmcap:W3('Every way each boundary can fail, and whether it is handled. An ID opens its runbook row. Select a system or link on the map to mark its rows.',
-             '每個邊界會怎麼壞、有沒有處理。點 ID 跳到它的處置列；點選地圖上的系統或連線，標出它的那幾列。',
-             '每个边界会怎么坏、有没有处理。点 ID 跳到它的处置行；点击地图上的系统或连线，标出它的那几行。'),
+             '每個邊界會怎麼壞、有沒有處理。點 ID 跳到處置手冊的那一列；點選地圖上的系統或連線，標出它的那幾列。',
+             '每个边界会怎么坏、有没有处理。点 ID 跳到处置手册的那一行；点击地图上的系统或连线，标出它的那几行。'),
     rbook:W3('Runbook','處置手冊（runbook）','处置手册（runbook）'),
     rbcap:W3('One row per failure mode: the signal that fires before a user notices, what the user sees, what on-call does. ↑ returns to its row in Failure modes.',
              '每種失效一列：使用者發現前會響的訊號、使用者看到什麼、on-call 要做什麼。↑ 回到失效模式表的那一列。',

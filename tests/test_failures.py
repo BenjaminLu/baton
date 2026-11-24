@@ -369,6 +369,13 @@ class VerifyRunbook(unittest.TestCase):
         self.assertTrue(any("carry detect / impact / action on the map" in w for w in warns), warns)
         self.assertEqual(len(quiet(warns)), 1)                     # the moved rows are checked like any other
         self.assertIn(": #2 ", quiet(warns)[0])                    # numbered as the page draws it (RenderedLegacyPacket)
+        self.assertTrue(any("4 = #2" in w for w in warns), warns)  # packet position and page number side by side
+
+    def test_system_without_id_is_named_as_the_page_names_it(self):
+        p = packet(failures=legacy_failures(), runbook=None, hops={})
+        del p["sections"][1]["systems"][0]["id"]
+        p["sections"][1]["failures"][0]["at"] = "null>api"        # the page would print "undefined"
+        self.assertTrue(any('`at` "null>api"' in x for x in fail_problems(p)))
 
     def test_legacy_rules_still_hold(self):
         rows = legacy_failures()

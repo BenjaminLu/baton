@@ -398,9 +398,14 @@ def _text(v):
     return v if isinstance(v, str) else ""
 
 
+def _sys_id(n):
+    """A system's id as the page prints it: String(undefined) when it has none."""
+    return _js_str(n["id"]) if "id" in n else "undefined"
+
+
 def _links(systems):
     """The links the map draws, as (key, a, b): each system to the next one."""
-    ids = [_js_str(n.get("id")) for n in systems or [] if isinstance(n, dict)]
+    ids = [_sys_id(n) for n in systems or [] if isinstance(n, dict)]
     return [(f"{a}>{b}", a, b) for a, b in zip(ids, ids[1:])]
 
 
@@ -432,9 +437,9 @@ def runbook_of(sec):
     # Number the rows without an id as the page draws the table: boundary by
     # boundary in map order, worst first inside one, then packet order.
     order = []
-    for n, a in enumerate(x for x in (sec.get("systems") if isinstance(sec.get("systems"), list) else [])
-                          if isinstance(x, dict)):
-        order.append(_js_str(a.get("id")))
+    for a in (sec.get("systems") if isinstance(sec.get("systems"), list) else []):
+        if isinstance(a, dict):
+            order.append(_sys_id(a))
     keys = []
     for k, a in enumerate(order):
         keys.append(a)
@@ -489,7 +494,7 @@ def check_failures(data, register="engineer"):
     sec = sections[-1]
     problems, warnings = [], []
     systems = sec.get("systems") if isinstance(sec.get("systems"), list) else []
-    ids = {_js_str(n.get("id")) for n in systems if isinstance(n, dict)}
+    ids = {_sys_id(n) for n in systems if isinstance(n, dict)}
     for i in sorted(i for i in ids if ">" in i):
         problems.append(f'system id "{i[:40]}" contains ">" — it would make an `at` link ambiguous; rename it')
     if "failures" not in sec:
@@ -514,7 +519,7 @@ def check_failures(data, register="engineer"):
     by_id = {}
     for i, f, fid, _ in modes:
         by_id.setdefault(fid, (i, f))          # the first, as the page resolves it
-    label_of = lambda i, f, fid: (f'failure mode {i+1}' + (f' `{fid}`' if not fid.startswith("#") else "") +
+    label_of = lambda i, f, fid: (f'failure mode {i+1}' + (f' `{fid}`' if not fid.startswith("#") else f" ({fid} on the page)") +
                                   f' ("{_en(f.get("mode"))[:40]}")')
     # Which runbook rows name each mode, and what each row says.
     rows_for = {fid: [] for _, _, fid, _ in modes}
@@ -530,7 +535,7 @@ def check_failures(data, register="engineer"):
         label = label_of(i, f, fid)
         raw = f.get("id")
         if raw is None:
-            legacy_ids.append(i + 1)
+            legacy_ids.append(f"{i+1} = {fid}")
         elif not is_authored:
             problems.append(f"{label}: `id` {str(raw)[:40]!r} must be 1–64 characters of A–Z a–z 0–9 _ . - "
                             "starting with a letter or digit")
@@ -553,7 +558,7 @@ def check_failures(data, register="engineer"):
             problems.append(f"{label}: {', '.join('`'+k+'`' for k in own)} written here and in the runbook row "
                             "that cites it — one home per fact: keep them in the runbook row only")
         elif own:
-            legacy_fields.append(fid if is_authored else str(i + 1))
+            legacy_fields.append(fid if is_authored else f"{i+1} = {fid}")
         n_rows = len(rows_for.get(fid, []))
         if n_rows == 0:
             problems.append(f"{label}: no runbook row — add one to `runbook` with "
