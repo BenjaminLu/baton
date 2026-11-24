@@ -875,7 +875,7 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
     fmode:W3('Failure mode','失效模式','失效模式'), fdetect:W3('Signal before a user notices','使用者發現前的訊號','用户发现前的信号'),
     fimpact:W3('What the user sees','使用者看到什麼','用户看到什么'), faction:W3('Runbook','處置（runbook）','处置（runbook）'),
     fref:W3('Evidence','證據','证据'), fstate:W3('State','狀態','状态'),
-    'fs-handled':W3('handled','已處理','已处理'), 'fs-detected':W3('detected','有偵測、未處理','有侦测、未处理'),
+    'fs-handled':W3('handled','已處理','已处理'), 'fs-detected':W3('detected','有偵測、未處理','已发现、未处理'),
     'fs-unhandled':W3('unhandled','未處理','未处理'), 'fs-unknown':W3('state not given','未標示狀態','未标示状态'),
     nosig:W3('no signal today','目前沒有訊號','目前没有信号'), noref:W3('no code reference','沒有程式碼出處','没有代码出处'),
     refused:W3('link refused','連結被拒','链接被拒'), fplan:W3('not built yet','尚未實作','尚未实现'),
@@ -1014,7 +1014,7 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
       h=href==null?'<span class="noref">'+pick(KL.refused,lang)+'</span>':
         '<a class="fref" href="'+E(href)+'" target="_blank" rel="noopener noreferrer" title="'+E(href)+'">'+
         E(refLabel(href)).replace(/\//g,'/<wbr>')+'</a>'; }
-    if(f.source!=null) h+='<span class="fsrc">'+pick(KL.fsrc,lang)+' '+pick(KL.q1,lang)+rich(pick(f.source,lang))+pick(KL.q2,lang)+'</span>';
+    if(f.source!=null) h+='<span class="fsrc">'+pick(KL.fsrc,lang)+(lang==='en'?' ':'')+pick(KL.q1,lang)+rich(pick(f.source,lang))+pick(KL.q2,lang)+'</span>';
     return h;
   }
   const FSTATE=Object.assign(Object.create(null),{handled:'ok',detected:'warn',unhandled:'risk'});
@@ -1031,13 +1031,13 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
     h+=tscroll(KL.fmodes,lang)+'<table class="fmt"><thead><tr>'+C.map(c=>'<th scope="col">'+E(c)+'</th>').join('')+'</tr></thead>';
     keys.forEach(k=>{
       const rows=FM.filter(f=>String(f.at==null?'':f.at)===k);
-      const cnt=Object.create(null); rows.forEach(f=>{ const st=FSTATE[f.state]?f.state:'unknown'; cnt[st]=(cnt[st]||0)+1; });
+      const cnt=Object.create(null); rows.forEach(f=>{ const st=(typeof f.state==='string'&&FSTATE[f.state])?f.state:'unknown'; cnt[st]=(cnt[st]||0)+1; });
       h+='<tbody class="fgroup" data-fg="'+E(k)+'"><tr class="fgh"><th colspan="6" scope="rowgroup"><span class="fgn">'+
         softBreaks(rich(label(k)))+'</span><span class="fct">'+
         ['handled','detected','unhandled','unknown'].filter(x=>cnt[x]).map(x=>cnt[x]+' '+pick(KL['fs-'+x],lang)).join(' · ')+
         '</span></th></tr>';
       rows.forEach(f=>{
-        const st=FSTATE[f.state]?f.state:'unknown';
+        const st=(typeof f.state==='string'&&FSTATE[f.state])?f.state:'unknown';
         const pin=f.finding!=null?'<span class="badge '+E(((s.findings||[]).find(x=>x&&x.n===f.finding)||{}).tone||'warn')+
           '" title="'+E(pick(KL.fpin,lang)+' '+f.finding)+'">'+E(f.finding)+'</span>':'';
         const d=pick(f.detect,lang);

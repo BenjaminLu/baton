@@ -358,10 +358,26 @@ def safe_ref(url):
     return None if re.search(r"[\"'<>`]", url) else url
 
 
+def _js_str(v):
+    """String(v) as the page computes it, so an id compares the same here."""
+    if v is None:
+        return "null"
+    if isinstance(v, bool):
+        return "true" if v else "false"
+    if isinstance(v, float) and v.is_integer():
+        return str(int(v))
+    return str(v)
+
+
+def _text(v):
+    """Text the page would print for an i18n field: a string or an i18n dict."""
+    return _en(v) if isinstance(v, (str, dict)) else ""
+
+
 def _links(systems):
-    """The links the map draws: each system to the next one."""
-    ids = [n.get("id") for n in systems or [] if isinstance(n, dict)]
-    return [f"{a}>{b}" for a, b in zip(map(str, ids), map(str, ids[1:]))]
+    """The links the map draws, as (key, a, b): each system to the next one."""
+    ids = [_js_str(n.get("id")) for n in systems or [] if isinstance(n, dict)]
+    return [(f"{a}>{b}", a, b) for a, b in zip(ids, ids[1:])]
 
 
 def check_failures(data, register="engineer"):
@@ -378,7 +394,9 @@ def check_failures(data, register="engineer"):
     sec = sections[-1]
     problems, warnings = [], []
     systems = sec.get("systems") if isinstance(sec.get("systems"), list) else []
-    ids = {str(n.get("id")) for n in systems if isinstance(n, dict)}
+    ids = {_js_str(n.get("id")) for n in systems if isinstance(n, dict)}
+    for i in sorted(i for i in ids if ">" in i):
+        problems.append(f'system id "{i[:40]}" contains ">" — it would make an `at` link ambiguous; rename it')
     if "failures" not in sec:
         msg = ("the boundary map has no `failures` — list every failure mode per system and link "
                "(mode, detect, impact, action, ref, state; boundary-review.md §3), or "
@@ -392,7 +410,7 @@ def check_failures(data, register="engineer"):
     finds = sec.get("findings") if isinstance(sec.get("findings"), list) else []
     pins = {f.get("n") for f in finds if isinstance(f, dict) and hashable(f.get("n"))}
     covered = set()
-    drawn = set(_links(systems))
+    drawn = {k for k, _, _ in _links(systems)}
     for i, f in enumerate(rows):
         if not isinstance(f, dict):
             problems.append(f"failure mode {i+1}: must be an object")
@@ -405,7 +423,7 @@ def check_failures(data, register="engineer"):
         else:
             covered.add(at)
         for key in ("mode", "impact", "action"):
-            if not _en(f.get(key)).strip():
+            if not _text(f.get(key)).strip():
                 problems.append(f"{label}: `{key}` is required")
         st = f.get("state")
         if st in (None, ""):
@@ -428,7 +446,7 @@ def check_failures(data, register="engineer"):
                                         "/blob/<sha>/<path>#La-Lb; a branch link drifts")
                     elif not m.group(2):
                         warnings.append(f"{label}: `ref` names a file but no lines — add #La-Lb")
-        if st == "handled" and ref is None and not _en(f.get("source")).strip():
+        if st == "handled" and ref is None and not _text(f.get("source")).strip():
             problems.append(f"{label}: `handled` needs `ref` — the code line that handles it "
                             "(or, on a proposal, the `source` sentence)")
         if st == "detected" and not _en(f.get("detect")).strip():
@@ -439,8 +457,7 @@ def check_failures(data, register="engineer"):
             problems.append(f"{label}: unhandled and introduced by this work — that is a finding; "
                             "give it a pin and set `finding` to its number")
     if not _en(sec.get("ok")):
-        for link in _links(systems):
-            a, b = link.split(">")
+        for link, a, b in _links(systems):
             if not covered & {link, a, b}:
                 warnings.append(f'link "{link}" has no failure mode listed — list how it fails' +
                                 ("" if sec.get("findings") else ", or say in `ok` why nothing can"))

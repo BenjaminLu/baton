@@ -191,6 +191,18 @@ class VerifyFailures(unittest.TestCase):
             p = packet(**{key: val})
             check_failures(p)                  # reports, never raises
         self.assertEqual(check_failures({"sections": {"a": 1}}), ([], []))
+        p = packet(systems=[{"id": "a>b"}, {"id": "c"}], failures=[])
+        probs, _ = check_failures(p)           # findings set, no ok: the coverage loop runs
+        self.assertTrue(any('contains ">"' in x for x in probs))
+        p = packet()
+        p["sections"][1]["failures"][0]["impact"] = [1]
+        self.assertTrue(any("`impact` is required" in x for x in fail_problems(p)))
+
+    def test_ids_compare_as_the_page_prints_them(self):
+        p = packet(systems=[{"id": True}, {"id": 1.0}], findings=[], ok={"en": "checked"},
+                   failures=[dict(failures()[3], at="true>1")])
+        p["sections"] = p["sections"][1:]
+        self.assertEqual(fail_problems(p), [])
         p = packet()
         p["sections"][1]["findings"][0]["n"] = [1]
         self.assertTrue(fail_problems(p))      # finding 1 no longer names a pin, and nothing crashed
