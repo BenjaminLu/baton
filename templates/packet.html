@@ -462,33 +462,40 @@ table.fmt tr.fgh th{text-align:left;padding:1rem .5rem .35rem;border-bottom:1px 
   font-size:.95rem;font-weight:650;color:var(--fg)}
 table.fmt tr.fgh .fct{font-family:var(--mono);font-size:.7rem;color:var(--muted);font-weight:400;margin-left:.8rem;white-space:nowrap}
 table.fmt tbody.fgroup.on td,table.fmt tbody.fgroup.on th{background:var(--accent-tint)}
-table.fmt tbody.fgroup.on tr.fgh th{box-shadow:inset 4px 0 0 var(--accent)}
-table.fmt tbody.fgroup.on td:first-child{box-shadow:inset 4px 0 0 var(--accent)}
+table.fmt tbody.fgroup.on tr.fgh th{box-shadow:inset 0 -2px 0 var(--accent);color:var(--accent)}
+/* A stripe per row in its state's colour, so "what is still unhandled" is
+   found by eye down the left edge, without reading to the last column. */
+table.fmt tr[data-st] td:first-child{box-shadow:inset 3px 0 0 var(--rule-strong);padding-left:.75rem}
+table.fmt tr[data-st=handled] td:first-child{box-shadow:inset 3px 0 0 var(--ok-ink)}
+table.fmt tr[data-st=detected] td:first-child{box-shadow:inset 3px 0 0 var(--warn-ink)}
+table.fmt tr[data-st=unhandled] td:first-child{box-shadow:inset 3px 0 0 var(--risk-ink)}
 table.fmt{width:100%;min-width:46rem;border-collapse:separate;border-spacing:0;font-size:.88rem}
 table.fmt th{font-size:.74rem;font-weight:600;color:var(--muted);text-align:left;padding:.4rem .5rem;
   border-bottom:1px solid var(--rule-strong);vertical-align:bottom}
 table.fmt td{padding:.55rem .5rem;border-bottom:1px solid var(--rule);vertical-align:top;line-height:1.45;overflow-wrap:break-word}
 table.fmt td.mode{font-weight:600;width:20%} table.fmt td.ev{width:13%} table.fmt td.st{width:8.5rem}
-table.fmt td code{word-break:normal;overflow-wrap:anywhere}
+table.fmt td code{word-break:normal;overflow-wrap:break-word}
 table.fmt .ktag{margin-right:0;white-space:normal}
 table.fmt .badge{position:static;display:inline-block;margin-left:.35rem;vertical-align:middle;width:1.3rem;height:1.3rem;
   line-height:1.3rem;font-size:.72rem}
-.nosig{color:var(--warn-ink);font-weight:650} .nosig::before{content:"⚠ "}
+.nosig{color:var(--risk-ink);font-weight:650} .nosig::before{content:"⚠ "}
 .noref{color:var(--muted);font-style:italic;font-size:.82rem}
 .fplan{display:inline-block;margin-left:.35rem;font-family:var(--mono);font-size:.66rem;letter-spacing:.05em;
   text-transform:uppercase;color:var(--muted);border:1px dashed var(--rule-strong);border-radius:3px;padding:0 .3rem;font-weight:400}
 .fsrc{display:block;margin-top:.3rem;font-size:.8rem;color:var(--muted);font-style:italic}
-a.fref{font-family:var(--mono);font-size:.8rem;overflow-wrap:anywhere}
+a.fref{font-family:var(--mono);font-size:.8rem;white-space:nowrap}
 a.fref::after{content:" ↗";font-family:var(--sans)}
 .bmap .fm{cursor:pointer}
-.bmap .cnode.fm:hover,.bmap .cnode.fm.on{border-color:var(--accent)}
+.bmap .cnode.fm:hover,.bmap .cnode.fm.on{border-color:var(--accent);background:var(--accent-tint)}
+.bmap .fm .fn-c{color:var(--link);text-decoration:underline dotted;text-underline-offset:2px}
 .bmap .carrow.fm:hover .hl,.bmap .carrow.fm.on .hl{color:var(--accent)}
 .bmap .fm:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .bmap .fn-c{display:block;font-family:var(--mono);font-size:max(12px,.62rem);color:var(--muted);margin-top:.2rem;font-weight:400;
   white-space:nowrap;text-align:center}
 /* A phone has no room for six columns: each mode becomes a short card whose
-   cells carry their own label, so nothing scrolls sideways at all. */
-@media (max-width:40rem){
+   cells carry their own label, so nothing scrolls sideways at all. Same
+   breakpoint as the map stacking, so the two always change together. */
+@media (max-width:56rem){
   .fmodes .tscroll{overflow-x:visible}
   table.fmt{min-width:0}
   table.fmt thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
@@ -500,7 +507,14 @@ a.fref::after{content:" ↗";font-family:var(--sans)}
   table.fmt tbody.fgroup.on td:first-child,table.fmt tbody.fgroup.on tr.fgh th{box-shadow:none;background:none}
   table.fmt tbody.fgroup.on tr.fgh th{padding-left:.5rem}
   table.fmt tbody.fgroup.on tr:not(.fgh){margin:0 .4rem .55rem}
-  table.fmt tr{border:1px solid var(--rule);border-radius:6px;padding:.4rem .6rem;margin-bottom:.55rem;background:var(--card)}
+  table.fmt tr{border:1px solid var(--rule);border-radius:6px;padding:.4rem .6rem;margin-bottom:.55rem;background:var(--card);
+    position:relative;border-left-width:4px}
+  table.fmt tr[data-st] td:first-child{box-shadow:none;padding-left:0}
+  table.fmt tr[data-st=handled]{border-left-color:var(--ok-ink)} table.fmt tr[data-st=detected]{border-left-color:var(--warn-ink)}
+  table.fmt tr[data-st=unhandled]{border-left-color:var(--risk-ink)}
+  table.fmt td.mode{padding-right:7.5rem}
+  table.fmt td.st{position:absolute;top:.55rem;right:.6rem;max-width:7rem;text-align:right}
+  table.fmt td.st::before{display:none!important}
   table.fmt td{border:0;padding:.2rem 0}
   table.fmt td.mode{width:auto;font-size:.95rem} table.fmt td.ev,table.fmt td.st{width:auto}
   table.fmt td:not(.mode)::before{content:attr(data-l);display:block;font-family:var(--mono);font-size:.66rem;
@@ -855,7 +869,7 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
     nosig:W3('no signal today','目前沒有訊號','目前没有信号'), noref:W3('no code reference','沒有程式碼出處','没有代码出处'),
     refused:W3('link refused','連結被拒','链接被拒'), fplan:W3('not built yet','尚未實作','尚未实现'),
     fsrc:W3('from the document','出自文件','出自文件'), fpin:W3('finding','發現','发现'),
-    fmFor:W3('Failure modes of','失效模式：','失效模式：'),
+    fmFor:W3('Failure modes of ','失效模式：','失效模式：'),
     fmOne:W3('mode','種失效','种失效'), fmMany:W3('modes','種失效','种失效')
   };
   const sub=(v,lang)=>{
@@ -946,10 +960,10 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
       if(String(f.at).includes('>')){ const a=String(f.at).split('>')[0]; if(ix[a]!=null) lb[ix[a]]=(lb[ix[a]]||'')+b; }
       else nb[f.at]=(nb[f.at]||'')+b;
     });
-    const FM=Array.isArray(s.failures)?s.failures.filter(f=>f&&typeof f==='object'):[];
+    const FM=Array.isArray(s.failures)?s.failures.filter(f=>f&&typeof f==='object'&&!Array.isArray(f)):[];
     const fmAt=Object.create(null); FM.forEach(f=>{ const k=String(f.at==null?'':f.at); fmAt[k]=(fmAt[k]||0)+1; });
     const nm=Object.create(null); (s.systems||[]).forEach(n=>nm[n.id]=pick(n.name,lang));
-    const fmName=k=>pick(KL.fmFor,lang)+' '+String(k).split('>').map(x=>nm[x]!=null?nm[x]:x).join(' → ');
+    const fmName=k=>pick(KL.fmFor,lang)+String(k).split('>').map(x=>nm[x]!=null?nm[x]:x).join(' → ');
     let h='<div class="bmap">'+laneHTML(s.systems||[], {sub:s.sub||{}, hops:s.hops||{}, hot:[]}, 'map', lang,
       {badges:nb, linkBadges:lb, okLinks:true,
        fm:k=>fmAt[k]?' data-at="'+E(k)+'" role="button" tabindex="0" aria-label="'+E(fmName(k))+'"':'',
@@ -987,11 +1001,11 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
     else { const href=safeRef(f.ref);
       h=href==null?'<span class="noref">'+pick(KL.refused,lang)+'</span>':
         '<a class="fref" href="'+E(href)+'" target="_blank" rel="noopener noreferrer" title="'+E(href)+'">'+
-        softBreaks(E(refLabel(href)))+'</a>'; }
+        E(refLabel(href)).replace(/\//g,'/<wbr>')+'</a>'; }
     if(f.source!=null) h+='<span class="fsrc">'+pick(KL.fsrc,lang)+' “'+rich(pick(f.source,lang))+'”</span>';
     return h;
   }
-  const FSTATE={handled:'ok',detected:'warn',unhandled:'risk'};
+  const FSTATE=Object.assign(Object.create(null),{handled:'ok',detected:'warn',unhandled:'risk'});
   function failuresHTML(s, FM, lang){
     if(!FM.length) return '';
     const sys=s.systems||[]; const name=Object.create(null); sys.forEach(n=>name[n.id]=pick(n.name,lang));
@@ -1005,7 +1019,7 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
     h+=tscroll(KL.fmodes,lang)+'<table class="fmt"><thead><tr>'+C.map(c=>'<th scope="col">'+E(c)+'</th>').join('')+'</tr></thead>';
     keys.forEach(k=>{
       const rows=FM.filter(f=>String(f.at==null?'':f.at)===k);
-      const cnt={}; rows.forEach(f=>{ const st=FSTATE[f.state]?f.state:'unknown'; cnt[st]=(cnt[st]||0)+1; });
+      const cnt=Object.create(null); rows.forEach(f=>{ const st=FSTATE[f.state]?f.state:'unknown'; cnt[st]=(cnt[st]||0)+1; });
       h+='<tbody class="fgroup" data-fg="'+E(k)+'"><tr class="fgh"><th colspan="6" scope="rowgroup"><span class="fgn">'+
         softBreaks(rich(label(k)))+'</span><span class="fct">'+
         ['handled','detected','unhandled','unknown'].filter(x=>cnt[x]).map(x=>cnt[x]+' '+pick(KL['fs-'+x],lang)).join(' · ')+
@@ -1015,9 +1029,9 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
         const pin=f.finding!=null?'<span class="badge '+E(((s.findings||[]).find(x=>x&&x.n===f.finding)||{}).tone||'warn')+
           '" title="'+E(pick(KL.fpin,lang)+' '+f.finding)+'">'+E(f.finding)+'</span>':'';
         const d=pick(f.detect,lang);
-        h+='<tr><td class="mode" data-l="'+E(C[0])+'">'+rich(pick(f.mode,lang))+pin+
+        h+='<tr data-st="'+st+'"><td class="mode" data-l="'+E(C[0])+'">'+rich(pick(f.mode,lang))+pin+
           (f.planned?'<span class="fplan">'+pick(KL.fplan,lang)+'</span>':'')+'</td>'+
-          '<td data-l="'+E(C[1])+'">'+(String(d).trim()?rich(d):'<span class="nosig">'+pick(KL.nosig,lang)+'</span>')+'</td>'+
+          '<td data-l="'+E(C[1])+'">'+(String(d).trim()?softBreaks(rich(d)).replace(/([{,=])(?![^<]*>)/g,'$1<wbr>'):'<span class="nosig">'+pick(KL.nosig,lang)+'</span>')+'</td>'+
           '<td data-l="'+E(C[2])+'">'+rich(pick(f.impact,lang))+'</td>'+
           '<td data-l="'+E(C[3])+'">'+rich(pick(f.action,lang))+'</td>'+
           '<td class="ev" data-l="'+E(C[4])+'">'+refHTML(f,lang)+'</td>'+
@@ -1027,15 +1041,23 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
     });
     return h+'</table></div></div>';
   }
-  // Clicking a system or link on the map marks its failure-mode rows.
+  // Clicking a system or link on the map marks its failure-mode rows; a
+  // second click on the same one clears the mark.
   function bindFailures(kb){
+    let cur=null;
+    const gid=k=>'fg-'+kb.dataset.sec+'-'+[...k].map(c=>c.charCodeAt(0).toString(36)).join('-');
+    kb.querySelectorAll('.fgroup').forEach(g=>{ g.id=gid(g.dataset.fg); });
     const pick1=k=>{
-      kb.querySelectorAll('.fm').forEach(x=>x.classList.toggle('on',x.dataset.at===k));
+      cur=(cur===k)?null:k;
+      kb.querySelectorAll('.bmap .fm').forEach(x=>{ const on=x.dataset.at===cur; x.classList.toggle('on',on);
+        x.setAttribute('aria-pressed',on?'true':'false'); });
       let first=null;
-      kb.querySelectorAll('.fgroup').forEach(g=>{ const on=g.dataset.fg===k; g.classList.toggle('on',on); if(on&&!first) first=g; });
-      if(first) first.scrollIntoView({block:'nearest',behavior:'smooth'});
+      kb.querySelectorAll('.fgroup').forEach(g=>{ const on=g.dataset.fg===cur; g.classList.toggle('on',on); if(on&&!first) first=g; });
+      const calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if(first) first.scrollIntoView({block:'nearest',behavior:calm?'auto':'smooth'});
     };
     kb.querySelectorAll('.bmap .fm').forEach(el=>{
+      el.setAttribute('aria-pressed','false'); el.setAttribute('aria-controls',gid(el.dataset.at));
       el.addEventListener('click',()=>pick1(el.dataset.at));
       el.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); pick1(el.dataset.at); } });
     });

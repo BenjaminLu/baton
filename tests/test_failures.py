@@ -181,6 +181,26 @@ class VerifyFailures(unittest.TestCase):
         for bad in ("x", 3, {"a": 1}, [None, "x", 3]):
             p = packet(failures=bad)
             self.assertTrue(fail_problems(p), repr(bad))
+        for key, val in (("state", {}), ("state", ["handled"]), ("finding", [1]), ("finding", {}),
+                         ("state", "toString"), ("at", 3)):
+            p = packet()
+            p["sections"][1]["failures"][1][key] = val
+            self.assertTrue(fail_problems(p), (key, val))
+        p = packet()
+        p["sections"][1]["findings"][0]["n"] = [1]
+        self.assertTrue(fail_problems(p))      # finding 1 no longer names a pin, and nothing crashed
+
+    def test_github_ref_shapes(self):
+        for ref, msg in ((f"https://github.com/o/r/blob/{SHA.upper()}/a.go#L1C2-L3C4", None),
+                         ("https://github.com/o/r/blob/main/a.go#L1", "not pinned"),
+                         (f"https://github.com/o/r/blob/{SHA}/a.go#Lx", "not a GitHub file permalink")):
+            p = packet()
+            p["sections"][1]["failures"][0]["ref"] = ref
+            out = " ".join(fail_problems(p))
+            if msg:
+                self.assertIn(msg, out, ref)
+            else:
+                self.assertEqual(out, "", ref)
 
     def test_register_scan_skips_ids_but_reads_prose(self):
         p = packet()
@@ -260,12 +280,15 @@ window.addEventListener('load',()=>setTimeout(()=>{
     nosig:q('.nosig').length, planned:q('.fplan').length, pins:q('table.fmt .badge').map(b=>b.textContent),
     states:q('table.fmt .ktag').map(e=>e.className),
     onattrs:q('*').flatMap(e=>[...e.attributes].filter(x=>/^on/i.test(x.name)).map(x=>e.tagName+' '+x.name)),
-    mapTargets:q('.bmap .fm').map(e=>e.dataset.at)};
+    mapTargets:q('.bmap .fm').map(e=>e.dataset.at), imgs:q('main img, main script').length};
   const t=document.querySelector('.bmap .carrow.fm[data-at="worker>fcm"]'); if(t) t.click();
   out.marked=q('.fgroup.on').map(g=>g.dataset.fg);
   const k=document.querySelector('.bmap .cnode.fm[data-at="fcm"]');
   if(k) k.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true}));
   out.markedKey=q('.fgroup.on').map(g=>g.dataset.fg);
+  out.pressed=q('.bmap .fm[aria-pressed=true]').map(e=>e.dataset.at);
+  out.controls=q('.bmap .fm').every(e=>document.getElementById(e.getAttribute('aria-controls')));
+  if(k) k.click(); out.cleared=q('.fgroup.on').length;
   const pre=document.createElement('pre'); pre.id='fm-out'; pre.textContent=JSON.stringify(out);
   document.body.appendChild(pre);},400));
 </script></body>"""
@@ -281,6 +304,11 @@ class RenderedFailures(unittest.TestCase):
                      "impact": {"en": "old notes show"}, "action": {"en": "expire after 60 s"},
                      "state": "unhandled", "planned": True,
                      "source": {"en": "The cache is refreshed every minute."}})
+        rows.append({"at": "fcm", "mode": {"en": '"><img src=x onerror="' + on("mode") + '">'},
+                     "detect": {"en": "<script>" + on("detect") + "</script>"},
+                     "impact": {"en": "[x](javascript:" + on("impact") + ")"}, "action": {"en": "y"},
+                     "state": "toString", "finding": '"><b>'})
+        rows.append(["not", "a", "row"])
         for i, url in enumerate(HOSTILE):
             rows.append({"at": "app", "mode": {"en": f"hostile {i}"}, "impact": {"en": "x"},
                          "action": {"en": "y"}, "ref": url, "state": "unhandled"})
@@ -303,7 +331,7 @@ class RenderedFailures(unittest.TestCase):
 
     def test_grouped_in_map_order(self):
         self.assertEqual(self.out["groups"], ["app", "app>api", "api", "api>worker", "worker>fcm", "fcm"])
-        self.assertEqual(self.out["rows"], 6 + self.n_hostile)
+        self.assertEqual(self.out["rows"], 7 + self.n_hostile)   # the array row is skipped
 
     def test_only_https_links_open_in_a_new_tab(self):
         refs = self.out["refs"]
@@ -322,7 +350,9 @@ class RenderedFailures(unittest.TestCase):
         self.assertIn("no code reference", self.out["refused"])
         self.assertEqual(self.out["nosig"], 2 + self.n_hostile)   # api>worker, planned cache, hostile rows
         self.assertEqual(self.out["planned"], 1)
-        self.assertEqual(self.out["pins"], ["1"])
+        self.assertEqual(self.out["pins"], ["1", '"><b>'])
+        self.assertIn("ktag ", self.out["states"])    # "toString" renders as state not given
+        self.assertEqual(self.out["imgs"], 0)
         self.assertIn("ktag ok", self.out["states"])
         self.assertIn("ktag warn", self.out["states"])
         self.assertIn("ktag risk", self.out["states"])
@@ -331,6 +361,9 @@ class RenderedFailures(unittest.TestCase):
         self.assertIn("worker>fcm", self.out["mapTargets"])
         self.assertEqual(self.out["marked"], ["worker>fcm"])
         self.assertEqual(self.out["markedKey"], ["fcm"])
+        self.assertEqual(self.out["pressed"], ["fcm"])
+        self.assertTrue(self.out["controls"])
+        self.assertEqual(self.out["cleared"], 0)      # a second click clears the mark
 
 
 if __name__ == "__main__":

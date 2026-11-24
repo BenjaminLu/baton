@@ -105,7 +105,7 @@ Clicking a system or link on the map highlights its rows.
 - Required on the `engineer` register (`verify.py` fails a boundary section
   without the key; on `eli5` it warns). `[]` is allowed and warns for each
   link that no row — on the link or on either end system — and no `ok`
-  covers. A packet written before this field gets that one clear message,
+  covers (with pins on the map `ok` is not allowed, so add the rows). A packet written before this field gets that one clear message,
   never a crash.
 
 ## compare, matrix, steps, stats

@@ -143,7 +143,9 @@ context's `## Boundary review` as a table (§6), so a receiving agent — or the
 person on call at 3 a.m. — can answer "what do I do when X fails" without
 opening the page. On the `eli5` register write `impact` and `action` in plain
 words ("the notification is not delivered; the app stops trying that phone");
-signal names in `detect` stay marked as terms.
+signal names in `detect` stay marked as terms. Write `hans` for `action` by hand
+rather than letting `render.py` derive it: OpenCC turns 呼叫 on-call ("page")
+into 调用 ("invoke"), which says something else in a runbook.
 
 ## 4. Write it on the page
 

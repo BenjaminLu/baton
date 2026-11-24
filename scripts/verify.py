@@ -345,7 +345,7 @@ def check_boundary_review(html, data):
 
 
 FAILURE_STATES = {"handled", "detected", "unhandled"}
-GITHUB_BLOB = re.compile(r"(?i)^https://github\.com/[^/]+/[^/]+/blob/([^/]+)/[^#]+(#L\d+(?:-L\d+)?)?$")
+GITHUB_BLOB = re.compile(r"(?i)^https://github\.com/[^/]+/[^/]+/blob/([^/]+)/[^#]+(#L\d+(?:C\d+)?(?:-L\d+(?:C\d+)?)?)?$")
 
 
 def safe_ref(url):
@@ -375,7 +375,7 @@ def check_failures(data, register="engineer"):
     sec = sections[-1]
     problems, warnings = [], []
     systems = sec.get("systems") or []
-    ids = _ids(systems)
+    ids = {str(n.get("id")) for n in systems if isinstance(n, dict)}
     if "failures" not in sec:
         msg = ("the boundary map has no `failures` — list every failure mode per system and link "
                "(mode, detect, impact, action, ref, state; boundary-review.md §3), or "
@@ -385,7 +385,8 @@ def check_failures(data, register="engineer"):
     rows = sec.get("failures")
     if not isinstance(rows, list):
         return ["`failures` must be a list of failure modes"], warnings
-    pins = {f.get("n") for f in sec.get("findings") or [] if isinstance(f, dict)}
+    hashable = lambda v: isinstance(v, (int, str)) and not isinstance(v, bool)
+    pins = {f.get("n") for f in sec.get("findings") or [] if isinstance(f, dict) and hashable(f.get("n"))}
     covered = set()
     for i, f in enumerate(rows):
         if not isinstance(f, dict):
@@ -404,7 +405,7 @@ def check_failures(data, register="engineer"):
         st = f.get("state")
         if st in (None, ""):
             problems.append(f"{label}: no `state` — set one of {sorted(FAILURE_STATES)}; there is no default")
-        elif st not in FAILURE_STATES:
+        elif not isinstance(st, str) or st not in FAILURE_STATES:
             problems.append(f'{label}: state "{st}" is not one of {sorted(FAILURE_STATES)}')
         ref = f.get("ref")
         if ref is not None:
@@ -414,7 +415,10 @@ def check_failures(data, register="engineer"):
             else:
                 m = GITHUB_BLOB.match(ref)
                 if re.match(r"(?i)^https://github\.com/[^/]+/[^/]+/blob/", ref):
-                    if not m or not re.fullmatch(r"[0-9a-f]{7,40}", m.group(1)):
+                    if not m:
+                        problems.append(f"{label}: `ref` is not a GitHub file permalink — use "
+                                        "/blob/<sha>/<path>#La-Lb")
+                    elif not re.fullmatch(r"(?i)[0-9a-f]{7,40}", m.group(1)):
                         problems.append(f"{label}: `ref` is a GitHub link not pinned to a commit — use "
                                         "/blob/<sha>/<path>#La-Lb; a branch link drifts")
                     elif not m.group(2):
@@ -424,7 +428,7 @@ def check_failures(data, register="engineer"):
                             "(or, on a proposal, the `source` sentence)")
         if st == "detected" and not _en(f.get("detect")).strip():
             problems.append(f"{label}: `detected` needs `detect` — the signal that notices it")
-        if "finding" in f and f["finding"] not in pins:
+        if "finding" in f and not (hashable(f["finding"]) and f["finding"] in pins):
             problems.append(f"{label}: `finding` {f['finding']!r} is not a pin on the map")
         if f.get("introduced") and st == "unhandled" and "finding" not in f:
             problems.append(f"{label}: unhandled and introduced by this work — that is a finding; "
@@ -433,8 +437,8 @@ def check_failures(data, register="engineer"):
         for link in _links(systems):
             a, b = link.split(">")
             if not covered & {link, a, b}:
-                warnings.append(f'link "{link}" has no failure mode listed and no `ok` line says why — '
-                                "list how it fails, or say in `ok` why nothing can")
+                warnings.append(f'link "{link}" has no failure mode listed — list how it fails' +
+                                ("" if sec.get("findings") else ", or say in `ok` why nothing can"))
     return problems, warnings
 
 
