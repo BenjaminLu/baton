@@ -368,6 +368,7 @@ class VerifyRunbook(unittest.TestCase):
         self.assertTrue(any("have no `id`" in w and "migrate" in w for w in warns), warns)
         self.assertTrue(any("carry detect / impact / action on the map" in w for w in warns), warns)
         self.assertEqual(len(quiet(warns)), 1)                     # the moved rows are checked like any other
+        self.assertIn(": #2 ", quiet(warns)[0])                    # numbered as the page draws it (RenderedLegacyPacket)
 
     def test_legacy_rules_still_hold(self):
         rows = legacy_failures()
@@ -499,7 +500,7 @@ window.addEventListener('load',()=>setTimeout(()=>{
     mapText:txt(MAP), rbText:txt(RB),
     refs:q('a.fref').map(a=>({href:a.getAttribute('href'),target:a.getAttribute('target'),rel:a.getAttribute('rel'),text:a.textContent})),
     refused:q('.noref').map(e=>e.textContent),
-    nosig:q(RB+' .nosig').length, mapNosig:q(MAP+' .nosig').length, planned:q('.fplan').length,
+    nosig:q(RB+' .nosig').length, quietIds:q(RB+' tr').filter(r=>r.querySelector('.nosig')).map(r=>{ const c=r.querySelector('a.fback code'); return c?c.textContent:''; }), mapNosig:q(MAP+' .nosig').length, planned:q('.fplan').length,
     pins:q(MAP+' .badge').map(b=>b.textContent),
     states:q(MAP+' .ktag').map(e=>e.className), rbStates:q(RB+' tr[data-st]').map(r=>r.dataset.st),
     onattrs:q('*').flatMap(e=>[...e.attributes].filter(x=>/^on/i.test(x.name)).map(x=>e.tagName+' '+x.name)),
@@ -605,8 +606,9 @@ class RenderedFailures(unittest.TestCase):
         ids = self.out["mapIds"]
         for fid in IDS:
             self.assertIn(fid, ids)
-        self.assertIn("#9", ids)                                 # a legacy row is numbered by position
-        self.assertTrue(any(i.startswith("#") for i in ids if "onclick" not in i))
+        legacy = [i for i in ids if i.startswith("#")]
+        self.assertEqual(len(legacy), 2 + self.n_hostile)        # numbered where the table draws them
+        self.assertEqual(legacy[:2], ["#1", "#2"])                # the hostile app rows come first
 
     def test_anchors_resolve_both_ways(self):
         pairs = self.out["pairs"]
@@ -621,15 +623,13 @@ class RenderedFailures(unittest.TestCase):
             self.assertEqual((x["tab"], x["href"], x["named"], x["hidden"]), (0, True, True, True), x)
         self.assertTrue(self.out["targetsFocusable"])
 
-    def test_jump_moves_focus_and_back_marks_the_map(self):
+    def test_jump_moves_focus_and_never_sets_a_mark(self):
         j = self.out["jumped"]
         self.assertTrue(j["inRunbook"] and j["flash"], j)
         self.assertIn("never gets reminders", j["text"])
         r = self.out["returned"]
         self.assertEqual((r["active"], r["inMap"]), (r["from"], True), r)
-        self.assertEqual(r["marked"], ["worker>fcm"])            # back on the map, its boundary is marked
-        self.assertEqual(r["pressed"], ["worker>fcm"])
-        self.assertEqual(r["rbMarked"], 2)
+        self.assertEqual((r["marked"], r["pressed"], r["rbMarked"]), ([], [], 0))   # focus only, no mark to undo
 
     def test_only_https_links_open_in_a_new_tab(self):
         refs = self.out["refs"]
@@ -656,7 +656,7 @@ class RenderedFailures(unittest.TestCase):
         self.assertIn("ktag ok", self.out["states"])
         self.assertIn("ktag warn", self.out["states"])
         self.assertIn("ktag risk", self.out["states"])
-        self.assertIn("unknown", self.out["rbStates"])            # the symptom row handles no mode on the map
+        self.assertEqual(self.out["rbStates"], [])                # state lives on the map row only
 
     def test_worst_first_within_a_boundary(self):
         # the packet lists handled before unhandled here; the page must put unhandled first
@@ -692,11 +692,12 @@ class RenderedLegacyPacket(unittest.TestCase):
     def test_migrates(self):
         o = self.out
         self.assertIsNotNone(o)
-        self.assertEqual(o["mapIds"], ["#1", "#4", "#2", "#3", "#5"])      # map order, worst first
+        self.assertEqual(o["mapIds"], ["#1", "#2", "#3", "#4", "#5"])      # numbered as drawn
         self.assertEqual(o["rbRows"], 5)
         self.assertNotIn("api_5xx_ratio", o["mapText"])
         self.assertIn("api_5xx_ratio", o["rbText"])
         self.assertEqual(o["nosig"], 1)
+        self.assertEqual(o["quietIds"], ["#2"])                       # the same number verify prints
         self.assertTrue(all(x["inRunbook"] and x["back"] for x in o["pairs"]) and len(o["pairs"]) == 5)
 
 

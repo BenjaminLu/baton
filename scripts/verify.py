@@ -405,8 +405,9 @@ def _links(systems):
 
 
 # A failure id is an anchor and a key: short, ASCII, no space. A row written
-# before ids existed gets "#<position>" — a character no authored id may hold,
-# so it can never collide with one or be cited by a runbook row.
+# before ids existed gets "#<n>", n its place in the table as drawn — a
+# character no authored id may hold, so it can never collide with one or be
+# cited by a runbook row.
 FAILURE_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,63}")
 RUNBOOK_FIELDS = ("detect", "impact", "action")
 
@@ -422,18 +423,30 @@ def runbook_of(sec):
     """
     fails = sec.get("failures") if isinstance(sec.get("failures"), list) else []
     book = sec.get("runbook") if isinstance(sec.get("runbook"), list) else []
-    modes, taken = [], set()
-    for i, f in enumerate(fails):
-        if isinstance(f, dict) and isinstance(f.get("id"), str) and FAILURE_ID.fullmatch(f["id"]):
-            taken.add(f["id"])
+    modes = []
     for i, f in enumerate(fails):
         if not isinstance(f, dict):
             continue
         fid = f.get("id")
-        if isinstance(fid, str) and FAILURE_ID.fullmatch(fid):
-            modes.append((i, f, fid, True))
-        else:
-            modes.append((i, f, f"#{i+1}", False))
+        modes.append([i, f, fid, True] if isinstance(fid, str) and FAILURE_ID.fullmatch(fid) else [i, f, None, False])
+    # Number the rows without an id as the page draws the table: boundary by
+    # boundary in map order, worst first inside one, then packet order.
+    order = []
+    for n, a in enumerate(x for x in (sec.get("systems") if isinstance(sec.get("systems"), list) else [])
+                          if isinstance(x, dict)):
+        order.append(_js_str(a.get("id")))
+    keys = []
+    for k, a in enumerate(order):
+        keys.append(a)
+        if k + 1 < len(order):
+            keys.append(f"{a}>{order[k+1]}")
+    pos = lambda at: keys.index(at) if at in keys else 10**9
+    rank = lambda st: {"unhandled": 0, "detected": 1, "handled": 2}.get(st, -1) if isinstance(st, str) else -1
+    at_of = lambda f: "" if f.get("at") is None else _js_str(f.get("at"))
+    for n, m in enumerate(sorted(modes, key=lambda m: (pos(at_of(m[1])), rank(m[1].get("state")), m[0]))):
+        if not m[3]:
+            m[2] = f"#{n+1}"
+    modes = [tuple(m) for m in modes]
     rows, cited = [], set()
     for i, r in enumerate(book):
         if not isinstance(r, dict):
@@ -498,13 +511,15 @@ def check_failures(data, register="engineer"):
     drawn = {k for k, _, _ in _links(systems)}
     modes, book = runbook_of(sec)
     authored = {fid for _, _, fid, a in modes if a}
-    by_id = {fid: (i, f) for i, f, fid, _ in modes}
+    by_id = {}
+    for i, f, fid, _ in modes:
+        by_id.setdefault(fid, (i, f))          # the first, as the page resolves it
     label_of = lambda i, f, fid: (f'failure mode {i+1}' + (f' `{fid}`' if not fid.startswith("#") else "") +
                                   f' ("{_en(f.get("mode"))[:40]}")')
     # Which runbook rows name each mode, and what each row says.
     rows_for = {fid: [] for _, _, fid, _ in modes}
     for j, (ri, r, cites) in enumerate(book):
-        for c in cites:
+        for c in dict.fromkeys(cites):         # a row counts once, however often it names the id
             if c in rows_for and (c in authored or ri is None):
                 rows_for[c].append(j)
     for i, f in enumerate(rows):

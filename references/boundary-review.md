@@ -142,10 +142,11 @@ row, every cited id is a failure on the map, and a `detect` / `impact` /
 homes for one fact. On the page each map row's id opens its runbook row and
 each runbook row's ↑ returns to the mode on the map.
 
-**Packets written before the runbook.** A failure row with no `id` and its own
-`detect` / `impact` / `action` still renders: the page numbers it `#<position>`
-and moves those fields into a generated runbook row. `verify.py` passes it with
-a warning to migrate — give the row an `id`, move the three fields into a
+**Packets written before the runbook.** A failure row that carries its own
+`detect` / `impact` / `action` and that no runbook row cites still renders: the
+page moves those fields into a generated runbook row, and a row with no `id`
+is numbered `#<n>` by its place in the table. `verify.py` passes it with a
+warning to migrate — give the row an `id`, move the three fields into a
 `runbook` row citing it.
 
 **Verify every `ref` line from source.** Re-locate the line at the pinned SHA

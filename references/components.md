@@ -112,10 +112,11 @@ runbook rows.
   cites as well).
 - A runbook row without `detect` prints "no signal today" and `verify.py`
   warns; it never fails.
-- **Older packets** — failure rows with no `id` that carry `detect` / `impact`
-  / `action` themselves — render unchanged in substance: the page numbers
-  each `#<position>` and moves the three fields into a generated runbook row.
-  `verify.py` passes them with a warning to migrate.
+- **Older packets** — failure rows that carry `detect` / `impact` / `action`
+  themselves and that no runbook row cites, usually with no `id` — render
+  unchanged in substance: the page moves the three fields into a generated
+  runbook row and numbers a row without an id `#<n>` by its place in the
+  table. `verify.py` passes them with a warning to migrate.
 - `state` is one of `handled` (needs `ref` or, on a proposal, `source`),
   `detected` (needs `detect` in its runbook row), `unhandled`. No default.
 - `ref` is `https://` only, at most 2048 characters, and opens in a new tab through the page's link
