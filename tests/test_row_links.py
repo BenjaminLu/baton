@@ -23,7 +23,8 @@ window.addEventListener('load',()=>setTimeout(()=>{
       ok:links.map(a=>{ const t=document.getElementById(a.dataset.place); const row=a.closest('tbody.fgroup');
         return {href:a.getAttribute('href')==='#'+a.dataset.place, inMap:!!(t&&kb.contains(t)&&t.closest('.bmap')),
           same:!!(t&&row&&t.dataset.at===row.dataset.fg), tab:a.tabIndex,
-          named:(a.getAttribute('aria-label')||'').includes(a.textContent)}; })};
+          named:(a.getAttribute('aria-label')||'').includes(a.textContent)&&!!row&&
+            (a.getAttribute('aria-label')||'').includes(row.querySelector('.fgn').textContent.replace(/\\u00a0/g,' ').split(' ')[0])}; })};
     const a=links[links.length-1];
     if(a){ a.focus(); a.click(); const act=document.activeElement;
       sec.jump={focusedPlace:!!(act&&act.classList&&act.classList.contains('fm')&&act.id===a.dataset.place),
@@ -32,6 +33,13 @@ window.addEventListener('load',()=>setTimeout(()=>{
       sec.enterMarks=q('.fgroup.on',kb).map(g=>g.dataset.fg); }
     out.sections.push(sec);
   });
+  out.ids=q('[id^=fp-]').map(e=>e.id); out.dupIds=out.ids.length-new Set(out.ids).size;
+  // After a language switch the page redraws: the links are bound again.
+  const zh=document.querySelector('.langs button[data-lang=hant]'); if(zh) zh.click();
+  const a2=q('table.fmt a.fno').pop();
+  if(a2){ a2.click(); const act=document.activeElement;
+    out.afterSwitch={focusedPlace:!!(act&&act.id===a2.dataset.place), flash:!!(act&&act.classList.contains('flash')),
+      zhLabel:/在地圖上看/.test(a2.getAttribute('aria-label')||'')}; }
   const pre=document.createElement('pre'); pre.id='rl-out'; pre.textContent=JSON.stringify(out);
   document.body.appendChild(pre);},400));
 </script></body>"""
@@ -63,6 +71,9 @@ class RowNumberLeadsToTheMap(unittest.TestCase):
         # a hostile system id cannot break out of the place id or the link
         spec["systems"]["systems"].append({"id": '"><img src=x onerror="' + on("sys") + '">', "name": {"en": "x"}})
         rows.append(dict(rows[0], at=spec["systems"]["systems"][-1]["id"], mode={"en": "hostile place"}))
+        spec["sections"].insert(3, copy.deepcopy(spec["sections"][2]))   # a second runbook on the same map
+        spec["sections"][3]["heading"] = {"en": "Runbook — second", "hant": "第二本"}
+        spec["sections"][3]["rows"] = [dict(rows[0], at="br>api", mode={"en": "another mode"})]
         cls.runbook = probe(spec)
         cls.boundary = probe(TF.packet())          # a boundary map that keeps its own failures
 
@@ -76,7 +87,7 @@ class RowNumberLeadsToTheMap(unittest.TestCase):
                     self.assertEqual(x, {"href": True, "inMap": True, "same": True, "tab": 0, "named": True})
 
     def test_a_place_not_on_the_map_keeps_a_plain_number(self):
-        rb = [s for s in self.runbook["sections"] if s["links"]][0]
+        rb = [s for s in self.runbook["sections"] if s["links"]][0]   # the first runbook
         self.assertEqual(rb["plain"], 1)
         self.assertEqual(rb["links"], 3)
 
@@ -86,6 +97,13 @@ class RowNumberLeadsToTheMap(unittest.TestCase):
                 j = s["jump"]
                 self.assertEqual((j["focusedPlace"], j["flash"], j["marked"], j["pressed"]), (True, True, 0, 0), j)
                 self.assertEqual(len(s["enterMarks"]), 1)
+
+    def test_ids_are_unique_across_runbooks_sharing_a_map(self):
+        self.assertGreaterEqual(len([s for s in self.runbook["sections"] if s["links"]]), 2)
+        self.assertEqual(self.runbook["dupIds"], 0)
+
+    def test_links_are_bound_again_after_a_language_switch(self):
+        self.assertEqual(self.runbook["afterSwitch"], {"focusedPlace": True, "flash": True, "zhLabel": True})
 
     def test_hostile_ids_stay_text(self):
         self.assertEqual(self.runbook["onattrs"], [])

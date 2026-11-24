@@ -529,9 +529,9 @@ a.fref::after{content:"\00a0↗";font-family:var(--sans)}
 #steps a.fno{text-decoration:none;color:var(--fg);cursor:pointer}
 #steps a.fno.risk{color:var(--risk-ink)} #steps a.fno.warn{color:var(--warn-ink)} #steps a.fno.ok{color:var(--ok-ink)}
 #steps a.fno:hover{background:var(--accent-tint)}
-#steps a.fno:focus-visible{outline:2px solid var(--link);outline-offset:2px}
-/* The place a row's number led to: a ring that fades, so the eye finds it. */
-.bmap .fm.flash{outline:2px solid var(--accent);outline-offset:3px;border-radius:6px}
+#steps a.fno:focus-visible{outline:2px solid var(--link);outline-offset:1px}
+/* The place a row's number led to: a ring for 1.6 s, so the eye finds it. */
+.bmap .fm.flash{outline:2px solid var(--accent);outline-offset:3px} .bmap .carrow.fm.flash{border-radius:6px}
 .ftoday{margin-top:.35rem;font-size:.8rem;color:var(--muted);line-height:1.45}
 .ftoday>span{font-family:var(--mono);font-size:.64rem;letter-spacing:.06em;text-transform:uppercase;margin-right:.4rem;font-weight:700}
 .bmap .fn-c{display:block;font-family:var(--mono);font-size:max(12px,.62rem);color:var(--muted);margin-top:.2rem;font-weight:400;
@@ -924,9 +924,9 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
     verified:W3('verified','已驗證','已验证'), unknown:W3('state not given','未標示狀態','未标示状态'), 'code-only':W3('code only','只有程式碼','只有代码'),
     absent:W3('absent','沒有證據','没有证据'),
     fmodes:W3('Failure modes — the runbook','失效模式與處置（runbook）','失效模式与处置（runbook）'),
-    fmcap:W3('Every way each boundary can fail: the signal that fires first, what the user sees, what on-call does. Select a system or link on the map to mark its rows; a row’s number leads back to its place.',
-             '每個邊界會怎麼壞：最先響的訊號、使用者看到什麼、on-call 要做什麼。點選地圖上的系統或連線，標出它的那幾列；點列的編號回到它在地圖上的位置。',
-             '每个边界会怎么坏：最先响的信号、用户看到什么、on-call 要做什么。点击地图上的系统或连线，标出它的那几行；点行的编号回到它在地图上的位置。'),
+    fmcap:W3('Every way each boundary can fail: the signal that fires first, what the user sees, what on-call does. Select a system or link on the map to mark its rows; a row’s number leads back to its place on the map.',
+             '每個邊界會怎麼壞：最先響的訊號、使用者看到什麼、on-call 要做什麼。點選地圖上的系統或連線，標出它的那幾列；點一列的編號，就會回到它在地圖上的位置。',
+             '每个边界会怎么坏：最先响的信号、用户看到什么、on-call 要做什么。点击地图上的系统或连线，标出它的那几行；点一行的编号，就会回到它在地图上的位置。'),
     fmode:W3('Failure mode','失效模式','失效模式'), fdetect:W3('Signal before a user notices','使用者發現前的訊號','用户发现前的信号'),
     fimpact:W3('What the user sees','使用者看到什麼','用户看到什么'), faction:W3('Runbook','處置（runbook）','处置（runbook）'),
     fref:W3('Evidence','證據','证据'), fstate:W3('State','狀態','状态'),
@@ -1056,8 +1056,11 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
   function placeIds(s, M){
     const sys=M.systems||[]; const out=Object.create(null); const si=secs.indexOf(s);
     const id=k=>'fp-'+si+'-'+[...k].map(c=>c.codePointAt(0).toString(36)).join('-');
-    sys.forEach((n,i)=>{ const a=String(n.id); out[a]=id(a);
-      if(i<sys.length-1){ const l=n.id+'>'+sys[i+1].id; out[l]=id(l); } });
+    // A key seen twice (a repeated system id) gets no id: the link would
+    // only ever reach the first box.
+    const seen=Object.create(null);
+    const put=k=>{ if(k in seen){ delete out[k]; return; } seen[k]=1; out[k]=id(k); };
+    sys.forEach((n,i)=>{ put(String(n.id)); if(i<sys.length-1) put(n.id+'>'+sys[i+1].id); });
     return out;
   }
   function boundaryHTML(s, lang){
@@ -1164,10 +1167,11 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
         // The row's number leads back to its place on the map (a real link:
         // Tab and Enter reach it, and the place takes focus without a mark).
         const pid=plan.pid&&plan.pid[k];
+        const rn=lang==='en'?pick(KL.fno,lang)+' '+r.n:'第 '+r.n+' '+pick(KL.fno,lang);
         const no=pid?'<a class="fno '+E(FSTATE[st]||'')+'" href="#'+E(pid)+'" data-place="'+E(pid)+'" title="'+
-            E(pick(KL.fno,lang)+' '+r.n+' — '+pick(KL.onmap,lang))+'" aria-label="'+
-            E(pick(KL.fno,lang)+' '+r.n+' — '+pick(KL.onmap,lang)+': '+label(k))+'">'+E(r.n)+'</a>':
-          '<b class="fno '+E(FSTATE[st]||'')+'" title="'+E(pick(KL.fno,lang)+' '+r.n)+'">'+E(r.n)+'</b>';
+            E(rn+' — '+pick(KL.onmap,lang))+'" aria-label="'+
+            E(rn+' — '+pick(KL.onmap,lang)+(lang==='en'?': ':'：')+label(k).replace(/\u00a0/g,' '))+'">'+E(r.n)+'</a>':
+          '<b class="fno '+E(FSTATE[st]||'')+'" title="'+E(rn)+'">'+E(r.n)+'</b>';
         h+='<tr role="row" data-st="'+st+'"><td role="cell" class="mode" data-l="'+E(C[0])+'">'+no+rich(pick(f.mode,lang))+pin+
           (f.planned?'<span class="fplan">'+pick(KL.fplan,lang)+'</span>':'')+
           // What production does today rides under the mode, not in a seventh column.
