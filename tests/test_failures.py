@@ -22,7 +22,8 @@ HOSTILE = ["javascript:alert(1)", "JaVaScRiPt:alert(1)", "data:text/html,<script
            " https://evil.example/a", "\u0001https://evil.example/a", "\thttps://evil.example/a",
            "https://evil.example/a b", "https://evil.example/\n", "http://plain.example/a",
            "//evil.example/a", "mailto:a@b.c", 'https://a"onmouseover="' + on("ref") + '"',
-           "https://a/'x", "https://a/<b>", "java\u0000script:x", "\u007fhttps://evil.example"]
+           "https://a/'x", "https://a/<b>", "java\u0000script:x", "\u007fhttps://evil.example",
+           "http\u017f://evil.example/a"]
 
 
 def chain(heading):
@@ -186,6 +187,9 @@ class VerifyFailures(unittest.TestCase):
             p = packet()
             p["sections"][1]["failures"][1][key] = val
             self.assertTrue(fail_problems(p), (key, val))
+        for key, val in (("systems", [None, "x", {"id": "app"}]), ("findings", 3)):
+            p = packet(**{key: val})
+            check_failures(p)                  # reports, never raises
         p = packet()
         p["sections"][1]["findings"][0]["n"] = [1]
         self.assertTrue(fail_problems(p))      # finding 1 no longer names a pin, and nothing crashed
@@ -193,6 +197,8 @@ class VerifyFailures(unittest.TestCase):
     def test_github_ref_shapes(self):
         for ref, msg in ((f"https://github.com/o/r/blob/{SHA.upper()}/a.go#L1C2-L3C4", None),
                          ("https://github.com/o/r/blob/main/a.go#L1", "not pinned"),
+                         ("https://www.github.com/o/r/blame/main/a.go#L1", "not pinned"),
+                         ("https://github.com/o/r/tree/main/a", "not a GitHub file permalink"),
                          (f"https://github.com/o/r/blob/{SHA}/a.go#Lx", "not a GitHub file permalink")):
             p = packet()
             p["sections"][1]["failures"][0]["ref"] = ref
@@ -261,10 +267,10 @@ class PageRefRule(unittest.TestCase):
         self.assertEqual(out, [safe_ref(u) for u in good + HOSTILE])
 
     def test_labels(self):
-        out = page_fns(json.dumps([REF, f"https://github.com/o/r/blob/{SHA}/a/b.py#L7",
+        out = page_fns(json.dumps([REF, f"https://github.com/o/r/blob/{SHA}/a/b.py#L7C2-L9C1",
                                     "https://firebase.google.com/docs/cloud-messaging/manage-tokens"]) +
                        ".map(refLabel)")
-        self.assertEqual(out[:2], ["worker.go:40–58", "b.py:7"])
+        self.assertEqual(out[:2], ["worker.go:40–58", "b.py:7–9"])
         self.assertTrue(out[2].startswith("firebase.google.com/…"), out[2])
 
 

@@ -345,20 +345,22 @@ def check_boundary_review(html, data):
 
 
 FAILURE_STATES = {"handled", "detected", "unhandled"}
-GITHUB_BLOB = re.compile(r"(?i)^https://github\.com/[^/]+/[^/]+/blob/([^/]+)/[^#]+(#L\d+(?:C\d+)?(?:-L\d+(?:C\d+)?)?)?$")
+GITHUB_CODE = re.compile(r"(?ai)^https://(?:www\.)?github\.com(?::443)?/[^/]+/[^/]+/(?:blob|blame|tree|raw)/")
+GITHUB_BLOB = re.compile(r"(?ai)^https://(?:www\.)?github\.com(?::443)?/[^/]+/[^/]+/(?:blob|blame|raw)/([^/]+)/[^#]+"
+                         r"(#L\d+(?:C\d+)?(?:-L\d+(?:C\d+)?)?)?$")
 
 
 def safe_ref(url):
     """A failure mode's evidence link: https only, no control character or
     space, no raw quote / angle bracket / backtick (the page's safeRef())."""
-    if not isinstance(url, str) or safe_href(url) is None or not re.match(r"(?i)^https://", url):
+    if not isinstance(url, str) or safe_href(url) is None or not re.match(r"(?ai)^https://", url):
         return None
     return None if re.search(r"[\"'<>`]", url) else url
 
 
 def _links(systems):
     """The links the map draws: each system to the next one."""
-    ids = [n.get("id") for n in systems or []]
+    ids = [n.get("id") for n in systems or [] if isinstance(n, dict)]
     return [f"{a}>{b}" for a, b in zip(ids, ids[1:])]
 
 
@@ -386,14 +388,15 @@ def check_failures(data, register="engineer"):
     if not isinstance(rows, list):
         return ["`failures` must be a list of failure modes"], warnings
     hashable = lambda v: isinstance(v, (int, str)) and not isinstance(v, bool)
-    pins = {f.get("n") for f in sec.get("findings") or [] if isinstance(f, dict) and hashable(f.get("n"))}
+    finds = sec.get("findings") if isinstance(sec.get("findings"), list) else []
+    pins = {f.get("n") for f in finds if isinstance(f, dict) and hashable(f.get("n"))}
     covered = set()
     for i, f in enumerate(rows):
         if not isinstance(f, dict):
             problems.append(f"failure mode {i+1}: must be an object")
             continue
         label = f'failure mode {i+1} ("{_en(f.get("mode"))[:40]}")'
-        at = str(f.get("at") or "")
+        at = "" if f.get("at") is None else str(f.get("at"))
         ends = at.split(">") if ">" in at else [at]
         if len(ends) > 2 or not all(e in ids for e in ends):
             problems.append(f'{label}: `at` "{at}" is not a system id or an "a>b" link on the map')
@@ -414,7 +417,7 @@ def check_failures(data, register="engineer"):
                                 "refuses it (no other scheme, control character, space or raw quote)")
             else:
                 m = GITHUB_BLOB.match(ref)
-                if re.match(r"(?i)^https://github\.com/[^/]+/[^/]+/blob/", ref):
+                if GITHUB_CODE.match(ref):
                     if not m:
                         problems.append(f"{label}: `ref` is not a GitHub file permalink — use "
                                         "/blob/<sha>/<path>#La-Lb")
@@ -423,14 +426,14 @@ def check_failures(data, register="engineer"):
                                         "/blob/<sha>/<path>#La-Lb; a branch link drifts")
                     elif not m.group(2):
                         warnings.append(f"{label}: `ref` names a file but no lines — add #La-Lb")
-        if st == "handled" and ref is None and not _en(f.get("source")):
+        if st == "handled" and ref is None and not _en(f.get("source")).strip():
             problems.append(f"{label}: `handled` needs `ref` — the code line that handles it "
                             "(or, on a proposal, the `source` sentence)")
         if st == "detected" and not _en(f.get("detect")).strip():
             problems.append(f"{label}: `detected` needs `detect` — the signal that notices it")
-        if "finding" in f and not (hashable(f["finding"]) and f["finding"] in pins):
+        if f.get("finding") is not None and not (hashable(f["finding"]) and f["finding"] in pins):
             problems.append(f"{label}: `finding` {f['finding']!r} is not a pin on the map")
-        if f.get("introduced") and st == "unhandled" and "finding" not in f:
+        if f.get("introduced") and st == "unhandled" and f.get("finding") is None:
             problems.append(f"{label}: unhandled and introduced by this work — that is a finding; "
                             "give it a pin and set `finding` to its number")
     if not _en(sec.get("ok")):
@@ -453,7 +456,7 @@ LINK = re.compile(r"\[([^\]\n]+)\]\(([^)\t\n\x0b\f\r ]+)\)")   # same class as t
 def safe_href(url):
     if re.search(r"[\x00-\x20\x7f]", url):
         return None
-    return url if re.match(r"(?i)^(https?://|mailto:)", url) else None
+    return url if re.match(r"(?ai)^(https?://|mailto:)", url) else None   # ASCII, like the page's /i
 
 
 # The page's SVG allow-list (templates/packet.html safeSVG()), mirrored, so a

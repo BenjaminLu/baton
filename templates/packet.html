@@ -480,7 +480,7 @@ table.fmt .badge{position:static;display:inline-block;margin-left:.35rem;vertica
   line-height:1.3rem;font-size:.72rem}
 .nosig{color:var(--risk-ink);font-weight:650} .nosig::before{content:"⚠ "}
 .noref{color:var(--muted);font-style:italic;font-size:.82rem}
-.fplan{display:inline-block;margin-left:.35rem;font-family:var(--mono);font-size:.66rem;letter-spacing:.05em;
+.fplan{display:inline-block;white-space:nowrap;margin-left:.35rem;font-family:var(--mono);font-size:.66rem;letter-spacing:.05em;
   text-transform:uppercase;color:var(--muted);border:1px dashed var(--rule-strong);border-radius:3px;padding:0 .3rem;font-weight:400}
 .fsrc{display:block;margin-top:.3rem;font-size:.8rem;color:var(--muted);font-style:italic}
 a.fref{font-family:var(--mono);font-size:.8rem;white-space:nowrap}
@@ -514,11 +514,19 @@ a.fref::after{content:" ↗";font-family:var(--sans)}
   table.fmt tr[data-st=unhandled]{border-left-color:var(--risk-ink)}
   table.fmt td.mode{padding-right:7.5rem}
   table.fmt td.st{position:absolute;top:.55rem;right:.6rem;max-width:7rem;text-align:right}
-  table.fmt td.st::before{display:none!important}
   table.fmt td{border:0;padding:.2rem 0}
   table.fmt td.mode{width:auto;font-size:.95rem} table.fmt td.ev,table.fmt td.st{width:auto}
   table.fmt td:not(.mode)::before{content:attr(data-l);display:block;font-family:var(--mono);font-size:.66rem;
     letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+  table.fmt td.st::before{display:none!important}
+}
+html:not(:lang(en)) table.fmt td::before{text-transform:none!important;letter-spacing:.02em}
+/* The narrowest phones: the state tag takes its own line above the title,
+   so the title keeps the full card width. */
+@media (max-width:30rem){
+  table.fmt tr:not(.fgh){display:flex;flex-direction:column}
+  table.fmt td.st{position:static;order:-1;max-width:none;text-align:left;padding:0 0 .1rem!important}
+  table.fmt td.mode{padding-right:0}
 }
 /* compare (from → to) */
 /* A table wider than its card scrolls inside this box, never the page. */
@@ -869,6 +877,7 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
     nosig:W3('no signal today','目前沒有訊號','目前没有信号'), noref:W3('no code reference','沒有程式碼出處','没有代码出处'),
     refused:W3('link refused','連結被拒','链接被拒'), fplan:W3('not built yet','尚未實作','尚未实现'),
     fsrc:W3('from the document','出自文件','出自文件'), fpin:W3('finding','發現','发现'),
+    q1:W3('“','「','“'), q2:W3('”','」','”'),
     fmFor:W3('Failure modes of ','失效模式：','失效模式：'),
     fmOne:W3('mode','種失效','种失效'), fmMany:W3('modes','種失效','种失效')
   };
@@ -989,7 +998,7 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
     return (h!=null && /^https:\/\//i.test(h) && !/["'<>`]/.test(h)) ? h : null;
   }
   function refLabel(u){
-    const g=/^https:\/\/github\.com\/[^\/]+\/[^\/]+\/blob\/[^\/]+\/([^#?]+)(?:#L(\d+)(?:-L(\d+))?)?/i.exec(u);
+    const g=/^https:\/\/github\.com\/[^\/]+\/[^\/]+\/blob\/[^\/]+\/([^#?]+)(?:#L(\d+)(?:C\d+)?(?:-L(\d+)(?:C\d+)?)?)?/i.exec(u);
     if(g){ const f=g[1].split('/').pop(); return f+(g[2]?':'+g[2]+(g[3]?'–'+g[3]:''):''); }
     const m=/^https:\/\/([^\/?#]+)([^?#]*)/i.exec(u); if(!m) return u;
     const path=(m[2]||'').replace(/\/$/,'');
@@ -1002,7 +1011,7 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
       h=href==null?'<span class="noref">'+pick(KL.refused,lang)+'</span>':
         '<a class="fref" href="'+E(href)+'" target="_blank" rel="noopener noreferrer" title="'+E(href)+'">'+
         E(refLabel(href)).replace(/\//g,'/<wbr>')+'</a>'; }
-    if(f.source!=null) h+='<span class="fsrc">'+pick(KL.fsrc,lang)+' “'+rich(pick(f.source,lang))+'”</span>';
+    if(f.source!=null) h+='<span class="fsrc">'+pick(KL.fsrc,lang)+' '+pick(KL.q1,lang)+rich(pick(f.source,lang))+pick(KL.q2,lang)+'</span>';
     return h;
   }
   const FSTATE=Object.assign(Object.create(null),{handled:'ok',detected:'warn',unhandled:'risk'});
@@ -1012,7 +1021,7 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
     const order=[]; sys.forEach((n,i)=>{ order.push(String(n.id)); if(i<sys.length-1) order.push(n.id+'>'+sys[i+1].id); });
     const keys=[...new Set(FM.map(f=>String(f.at==null?'':f.at)))]
       .sort((a,b)=>(order.indexOf(a)<0?1e9:order.indexOf(a))-(order.indexOf(b)<0?1e9:order.indexOf(b)));
-    const label=k=>k.includes('>')?k.split('>').map(x=>name[x]!=null?name[x]:x).join(' → '):(name[k]!=null?name[k]:k);
+    const label=k=>k.includes('>')?k.split('>').map(x=>name[x]!=null?name[x]:x).join(' →\u00a0'):(name[k]!=null?name[k]:k);
     const C=['fmode','fdetect','fimpact','faction','fref','fstate'].map(c=>pick(KL[c],lang));
     let h='<div class="fmodes"><h4>'+pick(KL.fmodes,lang)+'</h4><p class="fcap">'+pick(KL.fmcap,lang)+'</p>';
     // One table, one <tbody> per boundary: the columns line up down the whole list.
@@ -1031,7 +1040,7 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
         const d=pick(f.detect,lang);
         h+='<tr data-st="'+st+'"><td class="mode" data-l="'+E(C[0])+'">'+rich(pick(f.mode,lang))+pin+
           (f.planned?'<span class="fplan">'+pick(KL.fplan,lang)+'</span>':'')+'</td>'+
-          '<td data-l="'+E(C[1])+'">'+(String(d).trim()?softBreaks(rich(d)).replace(/([{,=])(?![^<]*>)/g,'$1<wbr>'):'<span class="nosig">'+pick(KL.nosig,lang)+'</span>')+'</td>'+
+          '<td data-l="'+E(C[1])+'">'+(String(d).trim()?softBreaks(rich(d)).split(/(<[^>]*>)/).map((t,i)=>i%2?t:t.replace(/[{,=]/g,'$&<wbr>')).join(''):'<span class="nosig">'+pick(KL.nosig,lang)+'</span>')+'</td>'+
           '<td data-l="'+E(C[2])+'">'+rich(pick(f.impact,lang))+'</td>'+
           '<td data-l="'+E(C[3])+'">'+rich(pick(f.action,lang))+'</td>'+
           '<td class="ev" data-l="'+E(C[4])+'">'+refHTML(f,lang)+'</td>'+
