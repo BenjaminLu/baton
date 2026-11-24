@@ -106,7 +106,10 @@ Clicking a system or link on the map highlights its rows.
   anywhere; a GitHub path carries no `%` escape (GitHub folds `//` and
   decodes `%xx`, which would open a fork or a branch the checks never saw). A
   GitHub `blob` / `blame` / `raw` link, or a `raw.githubusercontent.com`
-  one, must be pinned to a commit SHA, never a branch; the page labels it
+  (or `raw.github.com`) one, must be a file permalink pinned to a commit SHA,
+  never a branch (write the full 40-hex SHA: a short one is accepted, and a
+  branch named like hex would pass for it) — tree, edit and history routes are
+  refused; the page labels it
   `owner/repo · file:La–Lb`, and any other GitHub link also leads with
   `owner/repo`, so a fork cannot pass for the real repository.
 - `finding` names a pin on the **same** boundary (`at` equal to the row's).

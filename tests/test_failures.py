@@ -34,7 +34,8 @@ HOSTILE = ["javascript:alert(1)", "JaVaScRiPt:alert(1)", "data:text/html,<script
            # GitHub folds // and decodes %xx in the path
            f"https://github.com//evil/baton/blob/{SHA}/a.go#L1", f"https://github.com/evil//baton/blob/{SHA}/a.go#L1",
            f"https://github.com/o/r//blob/main/a.go#L1", "https://github.com/o/r/bl%6fb/main/a.go#L1",
-           f"https://github.com/o/r/blob/{SHA}/a%2fb.go#L1", "https://docs.example.com/a//b"]
+           f"https://github.com/o/r/blob/{SHA}/a%2fb.go#L1", "https://docs.example.com/a//b",
+           "https://raw.github.com/o/r/bl%6fb/a.go"]
 
 
 def chain(heading):
@@ -232,6 +233,9 @@ class VerifyFailures(unittest.TestCase):
                          ("https://raw.githubusercontent.com/o/r/main/a.go", "raw GitHub link not pinned"),
                          ("https://github.com/o/r/edit/main/a.go", "not a GitHub file permalink"),
                          (f"https://raw.githubusercontent.com/o/r/{SHA}/a.go", None),
+                         ("https://raw.github.com/evil/realrepo/main/a.go", "raw GitHub link not pinned"),
+                         (f"https://raw.github.com/o/r/{SHA}/a.go", None),
+                         (f"https://github.com/evil/r?x=/blob/{SHA}/a.go", None),   # opens the repo root; owner shown is real
                          (f"https://github.com/o/r/blob/{SHA}/a.go#Lx", "not a GitHub file permalink")):
             p = packet()
             p["sections"][1]["failures"][0]["ref"] = ref
@@ -304,13 +308,19 @@ class PageRefRule(unittest.TestCase):
         out = page_fns(json.dumps([REF, f"https://github.com/o/r/blob/{SHA}/a/b.py#L7C2-L9C1",
                                     f"https://www.github.com/o/r/blame/{SHA}/c.md?plain=1#L5",
                                     "https://github.com/o/r/pull/12345/files",
+                                    "https://raw.github.com/realorg/realrepo/main/services/notifications/push/worker.go",
+                                    "https://api.github.com/repos/evilorg/realrepo/contents/services/push/worker.go",
+                                    f"https://github.com/evil/r?x=/blob/{SHA}/a.go",
                                     "https://firebase.google.com/docs/cloud-messaging/manage-tokens"]) +
                        ".map(refLabel)")
         out = [x.replace("\u2060", "") for x in out]
         self.assertEqual(out[:2], ["example/notes-api · worker.go:40–58", "o/r · b.py:7–9"])
         self.assertEqual(out[2], "o/r · c.md:5")
         self.assertEqual(out[3], "o/r · pull/12345/files")    # any GitHub link leads with owner/repo
-        self.assertTrue(out[4].startswith("firebase.google.com/…"), out[4])
+        self.assertTrue(out[4].startswith("realorg/realrepo · "), out[4])
+        self.assertTrue(out[5].startswith("api.github.com/repos/evilorg/…/"), out[5])    # head kept
+        self.assertTrue(out[6].startswith("evil/r"), out[6])
+        self.assertEqual(out[7], "firebase.google.com/docs/cloud-messaging/manage-tokens")
 
 
 PROBE = """<script>

@@ -345,10 +345,10 @@ def check_boundary_review(html, data):
 
 
 FAILURE_STATES = {"handled", "detected", "unhandled"}
-GITHUB_CODE = re.compile(r"(?ai)^https://(?:www\.)?github\.com/[^/]+/[^/]+/(?:blob|blame|tree|raw|edit|commits|history)/")
-GITHUB_HOST = re.compile(r"(?ai)^https://(?:(?:www\.)?github\.com|raw\.githubusercontent\.com)(?=[/?#]|$)")
-GITHUB_RAW = re.compile(r"(?ai)^https://raw\.githubusercontent\.com/[^/]+/[^/]+/([^/]+)/")
-GITHUB_BLOB = re.compile(r"(?ai)^https://(?:www\.)?github\.com/([^/]+/[^/]+)/(?:blob|blame|raw)/([^/]+)/[^#]+"
+GITHUB_CODE = re.compile(r"(?ai)^https://(?:www\.)?github\.com/[^/?#]+/[^/?#]+/(?:blob|blame|tree|raw|edit|commits|history)/")
+GITHUB_HOST = re.compile(r"(?ai)^https://(?:(?:www\.)?github\.com|raw\.github(?:usercontent)?\.com)(?=[/?#]|$)")
+GITHUB_RAW = re.compile(r"(?ai)^https://raw\.github(?:usercontent)?\.com/[^/?#]+/[^/?#]+/([^/?#]+)/")
+GITHUB_BLOB = re.compile(r"(?ai)^https://(?:www\.)?github\.com/([^/?#]+/[^/?#]+)/(?:blob|blame|raw)/([^/?#]+)/[^#]+"
                          r"(#L\d+(?:C\d+)?(?:-L\d+(?:C\d+)?)?)?$")
 
 
@@ -455,7 +455,8 @@ def check_failures(data, register="engineer"):
         if ref is not None:
             if safe_ref(ref) is None:
                 problems.append(f"{label}: `ref` {str(ref)[:60]!r} is not a plain https:// URL — the page "
-                                "refuses it (no other scheme, control character, space or raw quote)")
+                                "refuses it: https only; an ASCII host with no port, trailing dot, userinfo or %; no control "
+                                "character, space, quote or backslash; no empty, . or .. segment; no % in a GitHub path")
             else:
                 m = GITHUB_BLOB.match(ref)
                 raw = GITHUB_RAW.match(ref)

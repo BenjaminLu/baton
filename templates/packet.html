@@ -473,7 +473,7 @@ table.fmt{width:100%;min-width:0;border-collapse:separate;border-spacing:0;font-
 table.fmt th{font-size:.74rem;font-weight:600;color:var(--muted);text-align:left;padding:.4rem .5rem;
   border-bottom:1px solid var(--rule-strong);vertical-align:bottom}
 table.fmt td{padding:.55rem .5rem;border-bottom:1px solid var(--rule);vertical-align:top;line-height:1.45;overflow-wrap:break-word}
-table.fmt td.mode{font-weight:600;width:15%} table.fmt td.ev{width:8.5rem;max-width:11rem} table.fmt td.st{width:7rem}
+table.fmt td.mode{font-weight:600;width:15%} table.fmt td.ev{width:12rem} table.fmt td.st{width:7rem}
 html:not(:lang(en)) table.fmt thead th{word-break:keep-all}
 table.fmt td code{word-break:normal;overflow-wrap:anywhere}
 table.fmt .ktag{margin-right:0;white-space:normal}
@@ -879,7 +879,7 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
     fimpact:W3('What the user sees','使用者看到什麼','用户看到什么'), faction:W3('Runbook','處置（runbook）','处置（runbook）'),
     fref:W3('Evidence','證據','证据'), fstate:W3('State','狀態','状态'),
     'fs-handled':W3('handled','已處理','已处理'), 'fs-detected':W3('detected, not handled','有偵測、未處理','有检测、未处理'),
-    'fs-unhandled':W3('unhandled','未處理','未处理'), 'fs-unknown':W3('state not given','未標示狀態','未标注状态'),
+    'fs-unhandled':W3('unhandled','未處理','未处理'), 'fs-unknown':W3('state not given','未標示狀態','未标示状态'),
     nosig:W3('no signal today','目前沒有訊號','目前没有信号'), noref:W3('no code reference','沒有程式碼出處','没有代码出处'),
     refused:W3('link refused','連結被拒','链接被拒'), fplan:W3('not built yet','尚未實作','尚未实现'),
     fsrc:W3('from the document','出自文件','出自文档'), fpin:W3('finding','發現','发现'),
@@ -1007,7 +1007,7 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
   // GitHub folds // and decodes %xx in a path, so /o//r/blob/… or /bl%6fb/
   // would open a fork or a branch the label and the pin check never saw.
   const EMPTY_SEG=/^https:\/\/[^\/?#]+[^?#]*\/\//i;
-  const GITHUB_HOST=/^https:\/\/(?:(?:www\.)?github\.com|raw\.githubusercontent\.com)(?=[\/?#]|$)/i;
+  const GITHUB_HOST=/^https:\/\/(?:(?:www\.)?github\.com|raw\.github(?:usercontent)?\.com)(?=[\/?#]|$)/i;
   const GITHUB_ESC=/^https:\/\/[^\/?#]+[^?#%]*%/i;
   function safeRef(u){
     if(typeof u!=='string') return null;
@@ -1017,15 +1017,17 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
   }
   // A GitHub ref names its repository, so a fork cannot pass as the real one.
   function refLabel(u){
-    const g=/^https:\/\/(?:www\.)?github\.com\/([^\/]+)\/([^\/]+)\/(?:blob|blame|raw)\/[^\/]+\/([^#?]+)(?:\?[^#]*)?(?:#L(\d+)(?:C\d+)?(?:-L(\d+)(?:C\d+)?)?)?/i.exec(u);
+    const g=/^https:\/\/(?:www\.)?github\.com\/([^\/?#]+)\/([^\/?#]+)\/(?:blob|blame|raw)\/[^\/?#]+\/([^#?]+)(?:\?[^#]*)?(?:#L(\d+)(?:C\d+)?(?:-L(\d+)(?:C\d+)?)?)?/i.exec(u);
     if(g){ const f=g[3].replace(/\/$/,'').split('/').pop()||g[3];
       return g[1]+'/'+g[2]+' · '+f+(g[4]?':'+g[4]+(g[5]?'\u2060–\u2060'+g[5]:''):''); }   // the range never splits at its dash
     const m=/^https:\/\/([^\/?#]+)([^?#]*)/i.exec(u); if(!m) return u;
     const path=(m[2]||'').replace(/\/$/,'');
     // Any other GitHub link still leads with its owner/repo.
-    const gh=/^https:\/\/(?:(?:www\.)?github\.com|raw\.githubusercontent\.com)\/([^\/?#]+)\/([^\/?#]+)(\/[^?#]*)?/i.exec(u);
+    const gh=/^https:\/\/(?:(?:www\.)?github\.com|raw\.github(?:usercontent)?\.com)\/([^\/?#]+)\/([^\/?#]+)(\/[^?#]*)?/i.exec(u);
     if(gh){ const rest=(gh[3]||'').replace(/\/$/,''); return gh[1]+'/'+gh[2]+(rest?' · '+(rest.length>28?'…'+rest.slice(-24):rest.slice(1)):''); }
-    return m[1]+(path.length>28?'/…'+path.slice(-24):path);
+    // Elsewhere keep the head of the path, where an owner usually sits, and the last segment.
+    const segs=path.split('/').filter(Boolean);
+    return m[1]+(path.length>28&&segs.length>3?'/'+segs[0]+'/'+segs[1]+'/…/'+segs[segs.length-1]:path);
   }
   function refHTML(f, lang){
     let h;
