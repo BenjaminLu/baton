@@ -121,7 +121,7 @@ class VerifyFailures(unittest.TestCase):
         self.assertEqual(warns, [])        # a row on an end system covers the link
 
     def test_at_must_be_on_the_map(self):
-        for at in ("nope", "app>nope", "app>api>worker", "", None):
+        for at in ("nope", "app>nope", "app>api>worker", "", None, "api>app", "app>worker", "app>app"):
             p = packet()
             p["sections"][1]["failures"][0]["at"] = at
             self.assertTrue(any("`at`" in x for x in fail_problems(p)), at)
@@ -187,9 +187,10 @@ class VerifyFailures(unittest.TestCase):
             p = packet()
             p["sections"][1]["failures"][1][key] = val
             self.assertTrue(fail_problems(p), (key, val))
-        for key, val in (("systems", [None, "x", {"id": "app"}]), ("findings", 3)):
+        for key, val in (("systems", [None, "x", {"id": "app"}]), ("findings", 3), ("systems", 3)):
             p = packet(**{key: val})
             check_failures(p)                  # reports, never raises
+        self.assertEqual(check_failures({"sections": {"a": 1}}), ([], []))
         p = packet()
         p["sections"][1]["findings"][0]["n"] = [1]
         self.assertTrue(fail_problems(p))      # finding 1 no longer names a pin, and nothing crashed
@@ -268,10 +269,12 @@ class PageRefRule(unittest.TestCase):
 
     def test_labels(self):
         out = page_fns(json.dumps([REF, f"https://github.com/o/r/blob/{SHA}/a/b.py#L7C2-L9C1",
+                                    f"https://www.github.com/o/r/blame/{SHA}/c.md?plain=1#L5",
                                     "https://firebase.google.com/docs/cloud-messaging/manage-tokens"]) +
                        ".map(refLabel)")
         self.assertEqual(out[:2], ["worker.go:40–58", "b.py:7–9"])
-        self.assertTrue(out[2].startswith("firebase.google.com/…"), out[2])
+        self.assertEqual(out[2], "c.md:5")
+        self.assertTrue(out[3].startswith("firebase.google.com/…"), out[3])
 
 
 PROBE = """<script>

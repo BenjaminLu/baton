@@ -95,7 +95,8 @@ admission-tested**. A mode that is no worse than today still belongs here: it
 is the runbook the next on-call reads, and an honest "unhandled" row is worth
 more than a missing one.
 
-**Enumerate per boundary.** For every system and every `a>b` link on the map,
+**Enumerate per boundary.** For every system and every link the map draws
+(`a>b`, where `b` follows `a` in `systems`),
 walk the modes below and keep each one that can happen there:
 
 | family | examples |

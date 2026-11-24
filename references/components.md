@@ -79,7 +79,7 @@ green: checked and fine. See `boundary-review.md` for how findings are chosen.
  "findings":[{"n":1,"at":"res" | "res>dev","lens":"coexist","tone":"warn",
               "title":i18n,"card":"<en heading of the chain card that draws it>"}],
  "ok":i18n,                                   // only when findings is empty
- "failures":[{"at":"push>fcm",               // a system id or an "a>b" link, like a pin
+ "failures":[{"at":"push>fcm",               // a system id, or "a>b" for a link the map draws (a next to b)
               "mode":i18n,                    // what fails
               "detect":i18n,                  // the signal before a user complains; omit → "no signal today"
               "impact":i18n,                  // what the user sees

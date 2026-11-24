@@ -489,6 +489,8 @@ a.fref::after{content:" ↗";font-family:var(--sans)}
 .bmap .cnode.fm:hover,.bmap .cnode.fm.on{border-color:var(--accent);background:var(--accent-tint)}
 .bmap .fm .fn-c{color:var(--link);text-decoration:underline dotted;text-underline-offset:2px}
 .bmap .carrow.fm:hover .hl,.bmap .carrow.fm.on .hl{color:var(--accent)}
+.bmap .carrow.fm.on{--ac:var(--accent);background:var(--accent-tint);border-radius:6px}
+.bmap .fm.on .fn-c{color:var(--accent);font-weight:600}
 .bmap .fm:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .bmap .fn-c{display:block;font-family:var(--mono);font-size:max(12px,.62rem);color:var(--muted);margin-top:.2rem;font-weight:400;
   white-space:nowrap;text-align:center}
@@ -502,6 +504,7 @@ a.fref::after{content:" ↗";font-family:var(--sans)}
   table.fmt,table.fmt tbody,table.fmt tr,table.fmt td,table.fmt th{display:block;width:auto}
   table.fmt tr.fgh{border:0;padding:0;margin:0;background:none}
   table.fmt tr.fgh th{padding:.9rem 0 .4rem;border:0}
+  table.fmt tr.fgh .fct{display:block;margin:.15rem 0 0}
   table.fmt tbody.fgroup.on{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px;background:var(--accent-tint)}
   table.fmt tbody.fgroup.on td,table.fmt tbody.fgroup.on th,
   table.fmt tbody.fgroup.on td:first-child,table.fmt tbody.fgroup.on tr.fgh th{box-shadow:none;background:none}
@@ -998,7 +1001,7 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
     return (h!=null && /^https:\/\//i.test(h) && !/["'<>`]/.test(h)) ? h : null;
   }
   function refLabel(u){
-    const g=/^https:\/\/github\.com\/[^\/]+\/[^\/]+\/blob\/[^\/]+\/([^#?]+)(?:#L(\d+)(?:C\d+)?(?:-L(\d+)(?:C\d+)?)?)?/i.exec(u);
+    const g=/^https:\/\/(?:www\.)?github\.com(?::443)?\/[^\/]+\/[^\/]+\/(?:blob|blame|raw)\/[^\/]+\/([^#?]+)(?:\?[^#]*)?(?:#L(\d+)(?:C\d+)?(?:-L(\d+)(?:C\d+)?)?)?/i.exec(u);
     if(g){ const f=g[1].split('/').pop(); return f+(g[2]?':'+g[2]+(g[3]?'–'+g[3]:''):''); }
     const m=/^https:\/\/([^\/?#]+)([^?#]*)/i.exec(u); if(!m) return u;
     const path=(m[2]||'').replace(/\/$/,'');
@@ -1054,7 +1057,7 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
   // second click on the same one clears the mark.
   function bindFailures(kb){
     let cur=null;
-    const gid=k=>'fg-'+kb.dataset.sec+'-'+[...k].map(c=>c.charCodeAt(0).toString(36)).join('-');
+    const gid=k=>'fg-'+kb.dataset.sec+'-'+[...k].map(c=>c.codePointAt(0).toString(36)).join('-');
     kb.querySelectorAll('.fgroup').forEach(g=>{ g.id=gid(g.dataset.fg); });
     const pick1=k=>{
       cur=(cur===k)?null:k;

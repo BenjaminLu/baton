@@ -361,7 +361,7 @@ def safe_ref(url):
 def _links(systems):
     """The links the map draws: each system to the next one."""
     ids = [n.get("id") for n in systems or [] if isinstance(n, dict)]
-    return [f"{a}>{b}" for a, b in zip(ids, ids[1:])]
+    return [f"{a}>{b}" for a, b in zip(map(str, ids), map(str, ids[1:]))]
 
 
 def check_failures(data, register="engineer"):
@@ -371,12 +371,13 @@ def check_failures(data, register="engineer"):
     leave the exit code alone. A packet written before `failures` existed gets
     one clear sentence telling the author what to add, never a traceback.
     """
-    sections = (data or {}).get("sections") or []
-    if not sections or not isinstance(sections[-1], dict) or sections[-1].get("kind") != "boundary":
+    sections = (data or {}).get("sections") if isinstance(data, dict) else None
+    if not isinstance(sections, list) or not sections or not isinstance(sections[-1], dict) \
+            or sections[-1].get("kind") != "boundary":
         return [], []          # check_boundary_review already reports the missing map
     sec = sections[-1]
     problems, warnings = [], []
-    systems = sec.get("systems") or []
+    systems = sec.get("systems") if isinstance(sec.get("systems"), list) else []
     ids = {str(n.get("id")) for n in systems if isinstance(n, dict)}
     if "failures" not in sec:
         msg = ("the boundary map has no `failures` — list every failure mode per system and link "
@@ -391,15 +392,16 @@ def check_failures(data, register="engineer"):
     finds = sec.get("findings") if isinstance(sec.get("findings"), list) else []
     pins = {f.get("n") for f in finds if isinstance(f, dict) and hashable(f.get("n"))}
     covered = set()
+    drawn = set(_links(systems))
     for i, f in enumerate(rows):
         if not isinstance(f, dict):
             problems.append(f"failure mode {i+1}: must be an object")
             continue
         label = f'failure mode {i+1} ("{_en(f.get("mode"))[:40]}")'
         at = "" if f.get("at") is None else str(f.get("at"))
-        ends = at.split(">") if ">" in at else [at]
-        if len(ends) > 2 or not all(e in ids for e in ends):
-            problems.append(f'{label}: `at` "{at}" is not a system id or an "a>b" link on the map')
+        if not (at in ids or at in drawn):
+            problems.append(f'{label}: `at` "{at}" is not a system id or an "a>b" link drawn on the map '
+                            "(each system to the next, in map order)")
         else:
             covered.add(at)
         for key in ("mode", "impact", "action"):
