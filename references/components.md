@@ -99,14 +99,14 @@ Clicking a system or link on the map highlights its rows.
 
 - `state` is one of `handled` (needs `ref` or, on a proposal, `source`),
   `detected` (needs `detect`), `unhandled`. No default.
-- `ref` is `https://` only and opens in a new tab through the page's link
+- `ref` is `https://` only, at most 2048 characters, and opens in a new tab through the page's link
   sanitizer (`rel="noopener noreferrer"`). The host must be the one the
   browser opens: plain ASCII, no port, trailing dot, userinfo or
   percent-escape, and no backslash, empty (`//`) or `.` / `..` segment
   anywhere; a GitHub path carries no `%` escape (GitHub folds `//` and
   decodes `%xx`, which would open a fork or a branch the checks never saw). A
   GitHub `blob` / `blame` / `raw` link, or a `raw.githubusercontent.com`
-  (or `raw.github.com`) one, must be a file permalink pinned to a commit SHA,
+  (or `raw.github.com`, or a `media.githubusercontent.com/media/` LFS) one, must be a file permalink pinned to a commit SHA,
   never a branch (write the full 40-hex SHA: a short one is accepted, and a
   branch named like hex would pass for it) — tree, edit and history routes are
   refused; the page labels it

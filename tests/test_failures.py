@@ -235,6 +235,7 @@ class VerifyFailures(unittest.TestCase):
                          (f"https://raw.githubusercontent.com/o/r/{SHA}/a.go", None),
                          ("https://raw.github.com/evil/realrepo/main/a.go", "raw GitHub link not pinned"),
                          (f"https://raw.github.com/o/r/{SHA}/a.go", None),
+                         ("https://media.githubusercontent.com/media/o/r/main/big.bin", "raw GitHub link not pinned"),
                          (f"https://github.com/evil/r?x=/blob/{SHA}/a.go", None),   # opens the repo root; owner shown is real
                          (f"https://github.com/o/r/blob/{SHA}/a.go#Lx", "not a GitHub file permalink")):
             p = packet()
@@ -286,7 +287,7 @@ def page_fns(calls):
     src = (ROOT / "templates" / "packet.html").read_text()
     parts = [re.search(r"  const E = .*?\n(?=\n)", src, re.S).group(0),
              re.search(r"  function safeHref\(u\)\{.*?\n  \}\n", src, re.S).group(0),
-             "".join(re.findall(r"  const (?:REF_HOST|DOT_SEG|EMPTY_SEG|GITHUB_HOST|GITHUB_ESC)=.*?\n", src)),
+             "".join(re.findall(r"  const (?:REF_HOST|DOT_SEG|EMPTY_SEG|GITHUB_HOST|GITHUB_ESC|REF_MAX)=.*?\n", src)),
              re.search(r"  function safeRef\(u\)\{.*?\n  \}\n", src, re.S).group(0),
              re.search(r"  function refLabel\(u\)\{.*?\n  \}\n", src, re.S).group(0)]
     js = "\n".join(parts).replace("const ", "var ") + "\nconsole.log(JSON.stringify(" + calls + "));"
@@ -303,6 +304,18 @@ class PageRefRule(unittest.TestCase):
         good = [REF, "https://firebase.google.com/docs/x", "HTTPS://EXAMPLE.COM/a"]
         out = page_fns(json.dumps(good + HOSTILE) + ".map(safeRef)")
         self.assertEqual(out, [safe_ref(u) for u in good + HOSTILE])
+
+    def test_long_refs_are_linear(self):
+        import time
+        refs = ["https://" + "a" * 50000, "https://" + "a" * 2030, "https://github.com/" + "a/" * 1000 + "x"]
+        t = time.monotonic()
+        out = page_fns(json.dumps(refs) + ".map(safeRef)")
+        self.assertLess(time.monotonic() - t, 2.0)              # node start-up included
+        t = time.monotonic()
+        mine = [safe_ref(u) for u in refs]
+        self.assertLess(time.monotonic() - t, 0.5)
+        self.assertEqual(out, mine)
+        self.assertIsNone(mine[0])                              # over 2048 characters
 
     def test_labels(self):
         out = page_fns(json.dumps([REF, f"https://github.com/o/r/blob/{SHA}/a/b.py#L7C2-L9C1",

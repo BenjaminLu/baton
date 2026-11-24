@@ -1006,11 +1006,12 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
   const DOT_SEG=/\/(?:\.|%2e){1,2}(?=[\/?#]|$)/i;
   // GitHub folds // and decodes %xx in a path, so /o//r/blob/… or /bl%6fb/
   // would open a fork or a branch the label and the pin check never saw.
-  const EMPTY_SEG=/^https:\/\/[^\/?#]+[^?#]*\/\//i;
-  const GITHUB_HOST=/^https:\/\/(?:(?:www\.)?github\.com|raw\.github(?:usercontent)?\.com)(?=[\/?#]|$)/i;
-  const GITHUB_ESC=/^https:\/\/[^\/?#]+[^?#%]*%/i;
+  const EMPTY_SEG=/^https:\/\/[^\/?#]+(?:\/[^?#]*)?\/\//i;   // path from a fixed point: no quadratic backtracking
+  const GITHUB_HOST=/^https:\/\/(?:(?:www\.)?github\.com|raw\.github(?:usercontent)?\.com|media\.githubusercontent\.com)(?=[\/?#]|$)/i;
+  const GITHUB_ESC=/^https:\/\/[^\/?#]+(?:\/[^?#%]*)?%/i;
+  const REF_MAX=2048;
   function safeRef(u){
-    if(typeof u!=='string') return null;
+    if(typeof u!=='string' || u.length>REF_MAX) return null;
     const h=safeHref(u);
     return (h!=null && REF_HOST.test(h) && !/["'<>`\\]/.test(h) && !DOT_SEG.test(h) && !EMPTY_SEG.test(h) &&
             !(GITHUB_HOST.test(h) && GITHUB_ESC.test(h))) ? h : null;
@@ -1023,7 +1024,7 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
     const m=/^https:\/\/([^\/?#]+)([^?#]*)/i.exec(u); if(!m) return u;
     const path=(m[2]||'').replace(/\/$/,'');
     // Any other GitHub link still leads with its owner/repo.
-    const gh=/^https:\/\/(?:(?:www\.)?github\.com|raw\.github(?:usercontent)?\.com)\/([^\/?#]+)\/([^\/?#]+)(\/[^?#]*)?/i.exec(u);
+    const gh=/^https:\/\/(?:(?:www\.)?github\.com|raw\.github(?:usercontent)?\.com|media\.githubusercontent\.com\/media)\/([^\/?#]+)\/([^\/?#]+)(\/[^?#]*)?/i.exec(u);
     if(gh){ const rest=(gh[3]||'').replace(/\/$/,''); return gh[1]+'/'+gh[2]+(rest?' · '+(rest.length>28?'…'+rest.slice(-24):rest.slice(1)):''); }
     // Elsewhere keep the head of the path, where an owner usually sits, and the last segment.
     const segs=path.split('/').filter(Boolean);

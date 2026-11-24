@@ -346,22 +346,27 @@ def check_boundary_review(html, data):
 
 FAILURE_STATES = {"handled", "detected", "unhandled"}
 GITHUB_CODE = re.compile(r"(?ai)^https://(?:www\.)?github\.com/[^/?#]+/[^/?#]+/(?:blob|blame|tree|raw|edit|commits|history)/")
-GITHUB_HOST = re.compile(r"(?ai)^https://(?:(?:www\.)?github\.com|raw\.github(?:usercontent)?\.com)(?=[/?#]|$)")
-GITHUB_RAW = re.compile(r"(?ai)^https://raw\.github(?:usercontent)?\.com/[^/?#]+/[^/?#]+/([^/?#]+)/")
+GITHUB_HOST = re.compile(r"(?ai)^https://(?:(?:www\.)?github\.com|raw\.github(?:usercontent)?\.com|"
+                         r"media\.githubusercontent\.com)(?=[/?#]|$)")
+GITHUB_RAW = re.compile(r"(?ai)^https://(?:raw\.github(?:usercontent)?\.com|media\.githubusercontent\.com/media)"
+                        r"/[^/?#]+/[^/?#]+/([^/?#]+)/")
 GITHUB_BLOB = re.compile(r"(?ai)^https://(?:www\.)?github\.com/([^/?#]+/[^/?#]+)/(?:blob|blame|raw)/([^/?#]+)/[^#]+"
                          r"(#L\d+(?:C\d+)?(?:-L\d+(?:C\d+)?)?)?$")
 
 
 REF_HOST = re.compile(r"(?ai)^https://[a-z0-9-]+(?:\.[a-z0-9-]+)*(?=[/?#]|$)")
 DOT_SEG = re.compile(r"(?ai)/(?:\.|%2e){1,2}(?=[/?#]|$)")
-EMPTY_SEG = re.compile(r"(?ai)^https://[^/?#]+[^?#]*//")       # GitHub folds // away
-GITHUB_ESC = re.compile(r"(?ai)^https://[^/?#]+[^?#%]*%")       # and decodes %xx in the path
+# The path is matched from a fixed point after the host, so a long host
+# cannot make these backtrack quadratically.
+EMPTY_SEG = re.compile(r"(?ai)^https://[^/?#]+(?:/[^?#]*)?//")       # GitHub folds // away
+GITHUB_ESC = re.compile(r"(?ai)^https://[^/?#]+(?:/[^?#%]*)?%")       # and decodes %xx in the path
+REF_MAX = 2048
 
 
 def safe_ref(url):
     """A failure mode's evidence link: https only, no control character or
     space, no raw quote / angle bracket / backtick (the page's safeRef())."""
-    if not isinstance(url, str) or safe_href(url) is None or not re.match(r"(?ai)^https://", url):
+    if not isinstance(url, str) or len(url) > REF_MAX or safe_href(url) is None or not re.match(r"(?ai)^https://", url):
         return None
     # The host shown must be the host opened (the page's REF_HOST / DOT_SEG):
     # ASCII labels only, no port, trailing dot, userinfo or percent-escape; no
@@ -455,7 +460,7 @@ def check_failures(data, register="engineer"):
         if ref is not None:
             if safe_ref(ref) is None:
                 problems.append(f"{label}: `ref` {str(ref)[:60]!r} is not a plain https:// URL — the page "
-                                "refuses it: https only; an ASCII host with no port, trailing dot, userinfo or %; no control "
+                                "refuses it: https only, at most 2048 characters; an ASCII host with no port, trailing dot, userinfo or %; no control "
                                 "character, space, quote or backslash; no empty, . or .. segment; no % in a GitHub path")
             else:
                 m = GITHUB_BLOB.match(ref)

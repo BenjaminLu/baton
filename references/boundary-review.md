@@ -128,7 +128,9 @@ the one the browser opens (a port, a trailing dot, userinfo, a
 percent-escape, a backslash, an empty `//` or a `..` segment, or a `%` escape
 in a GitHub path). The page shows a GitHub ref
 as `owner/repo · file:La–Lb`: check the repository is the real one, not a
-fork.
+fork. GitHub also serves a fork's commit under the parent repository's URL,
+so confirm the SHA exists in a clone of the real repository
+(`git cat-file -e <sha>`) — the `git grep` step above does that when you run it.
 
 **How it composes with findings.** Pins stay the admission-tested items of §2;
 the failure table is the complete list under them. A mode that is
