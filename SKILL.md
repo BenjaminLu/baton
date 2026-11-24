@@ -89,7 +89,18 @@ or "✗ blocked" is the card title restated; `verify.py` rejects it.
 end-to-end checks, logs, source reads — each explicitly marked `verified`,
 `code-only` or `absent` (no default; a chip without one fails `verify.py`). A pull request packet opens with a proof matrix (claims ×
 evidence type) so a reviewer sees in one glance what is shown and what is only
-asserted (`## Pull requests: review proof` below).
+asserted (`**One system map, drawn the same everywhere.** The packet declares its
+systems once (`systems`, spec.md § systems). For a change or a proposal it is
+the **target** system, not production today. The boundary map and every
+runbook draw it; the architecture and sequence figures of that state must
+show the same boxes under the same names (`verify.py` § system map fails a
+missing box, an extra one, or a renamed one). A runbook or failure-mode table
+always sits under that map with each row numbered where it fails — a bare
+table of error codes is refused. With runbooks present the boundary map carries only its
+pins; each failure mode is one row in one runbook, never repeated. Pages carry full-text search; `#q=<code>`
+deep-links an alert to its runbook row.
+
+## Pull requests: review proof` below).
 
 **Do not guess.** The reader cannot tell your inferences from your facts, so
 do not mix them. Deployment state — whether a migration ran, whether users

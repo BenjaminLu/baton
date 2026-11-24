@@ -15,6 +15,7 @@ that fits, never by trimming words until the counter stops.
 |---|---|---|
 | a change, a fix, a claim, a failure path | `chain` | 3–6 nodes, code labels ≤ 24 chars, hop labels ≤ 16 |
 | where systems meet, what is wrong there, and how each one fails | `boundary` (always last) | ≥ 2 systems, every pin links a `chain`, a `failures` row per failure mode |
+| error codes or symptoms and what on-call does | `runbook` | system map above, every row has `at`; never a `compare` (spec.md § runbook) |
 | old vs new, option vs option | `compare` | ≤ 6 rows of [dimension, from, to] |
 | cases × properties, claims × proof | `matrix` | ≤ 12 rows, one mark per cell |
 | an order of operations, a rollout | `steps` | 3–5 steps |
@@ -67,6 +68,18 @@ Rules:
 - A plain string in `sub` is a code term (mono); an i18n object is prose.
 
 ## boundary — the map that ends every packet
+
+The systems come from the packet's one `systems` map (spec.md § systems) —
+the target state when the packet has an after architecture — so the boundary
+map, the runbooks and the architecture / sequence figures show the same boxes.
+Every failure row is numbered, and the number is printed on the map where the
+row fails.
+
+**One row per failure mode, one place.** When the packet has `runbook`
+sections, every failure row lives in a runbook and the boundary map keeps only
+its pins (design gaps) — `verify.py` refuses `failures` on the map beside
+runbooks, and the same mode (`at` + its name before " — ") twice across
+runbooks. Without runbooks, the rows stay in the map's `failures`.
 
 The systems the work crosses, left to right, with each finding as a numbered
 pin on the node or the link where it lives. Links without a finding render
