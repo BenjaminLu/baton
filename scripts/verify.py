@@ -38,7 +38,7 @@ REFUSAL = ("say you do not know", "say you don't know", "說不知道", "说不�
 SKIP_KEYS = {"mermaid", "svg", "id", "kind", "tone", "filename", "range",
              "repo", "branch", "format_version", "layer", "glossary",
              "layer_note", "k", "was", "now", "method", "table", "op",
-             "guard", "summary", "ref"}
+             "guard", "summary", "ref", "at", "state"}
 
 
 def load(path):
@@ -344,6 +344,161 @@ def check_boundary_review(html, data):
     return problems
 
 
+FAILURE_STATES = {"handled", "detected", "unhandled"}
+GITHUB_CODE = re.compile(r"(?ai)^https://(?:www\.)?github\.com/[^/?#]+/[^/?#]+/(?:blob|blame|tree|raw|edit|commits|history)/")
+GITHUB_HOST = re.compile(r"(?ai)^https://(?:(?:www\.)?github\.com|raw\.github(?:usercontent)?\.com|"
+                         r"media\.githubusercontent\.com)(?=[/?#]|$)")
+GITHUB_RAW = re.compile(r"(?ai)^https://(?:raw\.github(?:usercontent)?\.com|media\.githubusercontent\.com/media)"
+                        r"/[^/?#]+/[^/?#]+/([^/?#]+)/")
+GITHUB_BLOB = re.compile(r"(?ai)^https://(?:www\.)?github\.com/([^/?#]+/[^/?#]+)/(?:blob|blame|raw)/([^/?#]+)/[^#]+"
+                         r"(#L\d+(?:C\d+)?(?:-L\d+(?:C\d+)?)?)?$")
+
+
+REF_HOST = re.compile(r"(?ai)^https://[a-z0-9-]+(?:\.[a-z0-9-]+)*(?=[/?#]|$)")
+DOT_SEG = re.compile(r"(?ai)/(?:\.|%2e){1,2}(?=[/?#]|$)")
+# The path is matched from a fixed point after the host, so a long host
+# cannot make these backtrack quadratically.
+EMPTY_SEG = re.compile(r"(?ai)^https://[^/?#]+(?:/[^?#]*)?//")       # GitHub folds // away
+GITHUB_ESC = re.compile(r"(?ai)^https://[^/?#]+(?:/[^?#%]*)?%")       # and decodes %xx in the path
+REF_MAX = 2048
+
+
+def safe_ref(url):
+    """A failure mode's evidence link: https only, no control character or
+    space, no raw quote / angle bracket / backtick (the page's safeRef())."""
+    if not isinstance(url, str) or len(url) > REF_MAX or safe_href(url) is None or not re.match(r"(?ai)^https://", url):
+        return None
+    # The host shown must be the host opened (the page's REF_HOST / DOT_SEG):
+    # ASCII labels only, no port, trailing dot, userinfo or percent-escape; no
+    # backslash; no dot segment that would fold /blob/<sha>/../main/ away.
+    if re.search(r"[\"'<>`\\]", url) or not REF_HOST.match(url) or DOT_SEG.search(url):
+        return None
+    # GitHub serves /o//r/blob/… and /o/r/bl%6fb/… as the plain path, which would
+    # slip a fork or a branch past the pin check and the owner/repo label.
+    if EMPTY_SEG.search(url) or (GITHUB_HOST.match(url) and GITHUB_ESC.search(url)):
+        return None
+    return url
+
+
+def _js_str(v):
+    """String(v) as the page computes it, so an id compares the same here."""
+    if v is None:
+        return "null"
+    if isinstance(v, bool):
+        return "true" if v else "false"
+    if isinstance(v, float) and v.is_integer():
+        return str(int(v))
+    return str(v)
+
+
+def _text(v):
+    """Text the page would print for an i18n field: a string or an i18n dict."""
+    if isinstance(v, dict):
+        return v["en"] if isinstance(v.get("en"), str) else ""
+    return v if isinstance(v, str) else ""
+
+
+def _links(systems):
+    """The links the map draws, as (key, a, b): each system to the next one."""
+    ids = [_js_str(n.get("id")) for n in systems or [] if isinstance(n, dict)]
+    return [(f"{a}>{b}", a, b) for a, b in zip(ids, ids[1:])]
+
+
+def check_failures(data, register="engineer"):
+    """The failure-mode table under the boundary map (boundary-review.md §3).
+
+    Returns (problems, warnings). Problems fail the run; warnings print and
+    leave the exit code alone. A packet written before `failures` existed gets
+    one clear sentence telling the author what to add, never a traceback.
+    """
+    sections = (data or {}).get("sections") if isinstance(data, dict) else None
+    if not isinstance(sections, list) or not sections or not isinstance(sections[-1], dict) \
+            or sections[-1].get("kind") != "boundary":
+        return [], []          # check_boundary_review already reports the missing map
+    sec = sections[-1]
+    problems, warnings = [], []
+    systems = sec.get("systems") if isinstance(sec.get("systems"), list) else []
+    ids = {_js_str(n.get("id")) for n in systems if isinstance(n, dict)}
+    for i in sorted(i for i in ids if ">" in i):
+        problems.append(f'system id "{i[:40]}" contains ">" — it would make an `at` link ambiguous; rename it')
+    if "failures" not in sec:
+        msg = ("the boundary map has no `failures` — list every failure mode per system and link "
+               "(mode, detect, impact, action, ref, state; boundary-review.md §3), or "
+               '`"failures": []` when none apply')
+        (problems if register == "engineer" and len(ids) >= 2 else warnings).append(msg)
+        return problems, warnings
+    rows = sec.get("failures")
+    if not isinstance(rows, list):
+        return ["`failures` must be a list of failure modes"], warnings
+    hashable = lambda v: isinstance(v, (int, str)) and not isinstance(v, bool)
+    finds = sec.get("findings") if isinstance(sec.get("findings"), list) else []
+    pins = {f.get("n"): ("" if f.get("at") is None else _js_str(f.get("at")))
+            for f in finds if isinstance(f, dict) and hashable(f.get("n"))}
+    covered = set()
+    drawn = {k for k, _, _ in _links(systems)}
+    for i, f in enumerate(rows):
+        if not isinstance(f, dict):
+            problems.append(f"failure mode {i+1}: must be an object")
+            continue
+        label = f'failure mode {i+1} ("{_en(f.get("mode"))[:40]}")'
+        at = f.get("at")
+        at = _js_str(at) if isinstance(at, (str, int)) and not isinstance(at, bool) else ""
+        if not (at in ids or at in drawn):
+            problems.append(f'{label}: `at` "{at}" is not a system id or an "a>b" link drawn on the map '
+                            "(each system to the next, in map order)")
+        else:
+            covered.add(at)
+        for key in ("mode", "impact", "action"):
+            if not _text(f.get(key)).strip():
+                problems.append(f"{label}: `{key}` is required")
+        st = f.get("state")
+        if st in (None, ""):
+            problems.append(f"{label}: no `state` — set one of {sorted(FAILURE_STATES)}; there is no default")
+        elif not isinstance(st, str) or st not in FAILURE_STATES:
+            problems.append(f'{label}: state "{st}" is not one of {sorted(FAILURE_STATES)}')
+        ref = f.get("ref")
+        if ref is not None:
+            if safe_ref(ref) is None:
+                problems.append(f"{label}: `ref` {str(ref)[:60]!r} is not a plain https:// URL — the page "
+                                "refuses it: https only, at most 2048 characters; an ASCII host with no port, trailing dot, userinfo or %; no control "
+                                "character, space, quote or backslash; no empty, . or .. segment; no % in a GitHub path")
+            else:
+                m = GITHUB_BLOB.match(ref)
+                raw = GITHUB_RAW.match(ref)
+                if raw and not re.fullmatch(r"(?ai)[0-9a-f]{7,40}", raw.group(1)):
+                    problems.append(f"{label}: `ref` is a raw GitHub link not pinned to a commit — use "
+                                    "raw.githubusercontent.com/<owner>/<repo>/<sha>/<path>")
+                if GITHUB_CODE.match(ref):
+                    if not m:
+                        problems.append(f"{label}: `ref` is not a GitHub file permalink — use "
+                                        "/blob/<sha>/<path>#La-Lb")
+                    elif not re.fullmatch(r"(?ai)[0-9a-f]{7,40}", m.group(2)):
+                        problems.append(f"{label}: `ref` is a GitHub link not pinned to a commit — use "
+                                        "/blob/<sha>/<path>#La-Lb; a branch link drifts")
+                    elif not m.group(3):
+                        warnings.append(f"{label}: `ref` names a file but no lines — add #La-Lb")
+        if st == "handled" and ref is None and not _text(f.get("source")).strip():
+            problems.append(f"{label}: `handled` needs `ref` — the code line that handles it "
+                            "(or, on a proposal, the `source` sentence)")
+        if st == "detected" and not _text(f.get("detect")).strip():
+            problems.append(f"{label}: `detected` needs `detect` — the signal that notices it")
+        if f.get("finding") is not None:
+            if not (hashable(f["finding"]) and f["finding"] in pins):
+                problems.append(f"{label}: `finding` {f['finding']!r} is not a pin on the map")
+            elif pins[f["finding"]] != at:
+                problems.append(f'{label}: `finding` {f["finding"]} is pinned at "{pins[f["finding"]]}", '
+                                f'not at this row\'s "{at}" — point it at the pin on the same boundary')
+        if f.get("introduced") and st == "unhandled" and f.get("finding") is None:
+            problems.append(f"{label}: unhandled and introduced by this work — that is a finding; "
+                            "give it a pin and set `finding` to its number")
+    if not _en(sec.get("ok")):
+        for link, a, b in _links(systems):
+            if not covered & {link, a, b}:
+                warnings.append(f'link "{link}" has no failure mode listed — list how it fails' +
+                                ("" if sec.get("findings") else ", or say in `ok` why nothing can"))
+    return problems, warnings
+
+
 # The page's link rule (templates/packet.html rich() / safeHref()), mirrored:
 # default-deny. Only http(s):// and mailto: render as links, and a URL with
 # any control character or space is refused, because browsers strip leading
@@ -355,7 +510,7 @@ LINK = re.compile(r"\[([^\]\n]+)\]\(([^)\t\n\x0b\f\r ]+)\)")   # same class as t
 def safe_href(url):
     if re.search(r"[\x00-\x20\x7f]", url):
         return None
-    return url if re.match(r"(?i)^(https?://|mailto:)", url) else None
+    return url if re.match(r"(?ai)^(https?://|mailto:)", url) else None   # ASCII, like the page's /i
 
 
 # The page's SVG allow-list (templates/packet.html safeSVG()), mirrored, so a
@@ -474,17 +629,25 @@ def main():
     a = ap.parse_args()
 
     html, data = load(a.packet)
+    fail_problems, fail_warnings = check_failures(data, a.register)
     groups = [("context", check_context(html)), ("before/after", check_before_after(data)),
               ("components", check_components(data)),
               ("boundary review", check_boundary_review(html, data)),
+              ("failure modes", fail_problems),
               ("links", check_links(data)), ("svg", check_svg(data))]
     if a.register == "eli5":
         groups.append(("register",
                        check_register(data, (data or {}).get("glossary", []))))
 
     total = sum(len(p) for _, p in groups)
+    if fail_warnings:
+        print(f"baton: {len(fail_warnings)} warning(s) — failure modes:", file=sys.stderr)
+        for w in fail_warnings[:12]:
+            print(f"    - {w}", file=sys.stderr)
+        if len(fail_warnings) > 12:
+            print(f"    … and {len(fail_warnings) - 12} more", file=sys.stderr)
     if not total:
-        print("ok — context, components, before/after, boundary map and register checked. "
+        print("ok — context, components, before/after, boundary map, failure modes and register checked. "
               "Diagrams are checked in the browser (pipeline §6).")
         return 0
 

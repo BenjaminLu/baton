@@ -454,6 +454,86 @@ button.act:disabled{opacity:.4;cursor:default}
 .bok{margin-top:1rem;border:1px solid var(--ok);border-left:4px solid var(--ok);border-radius:6px;padding:.7rem .9rem;
   line-height:1.55}
 .bok::before{content:"✓ ";color:var(--ok);font-weight:700}
+/* failure modes under the map: one compact table per boundary — the runbook */
+.fmodes{margin-top:1.4rem;border-top:1px solid var(--rule);padding-top:1rem}
+.fmodes>h4{font-family:var(--serif);font-size:1.12rem;font-weight:600;margin:0 0 .2rem}
+.fmodes>.fcap{margin:0 0 .9rem;font-size:.9rem;color:var(--muted);line-height:1.5}
+table.fmt tr.fgh th{text-align:left;padding:1rem .5rem .35rem;border-bottom:1px solid var(--rule-strong);
+  font-size:.95rem;font-weight:650;color:var(--fg)}
+table.fmt tr.fgh .fct{font-family:var(--mono);font-size:.7rem;color:var(--muted);font-weight:400;margin-left:.8rem;white-space:normal;overflow-wrap:anywhere}
+table.fmt tbody.fgroup.on td,table.fmt tbody.fgroup.on th{background:var(--accent-tint)}
+table.fmt tbody.fgroup.on tr.fgh th{box-shadow:inset 0 -2px 0 var(--accent);color:var(--accent)}
+/* A stripe per row in its state's colour, so "what is still unhandled" is
+   found by eye down the left edge, without reading to the last column. */
+table.fmt tr[data-st] td:first-child{box-shadow:inset 3px 0 0 var(--rule-strong);padding-left:.75rem}
+table.fmt tr[data-st=handled] td:first-child{box-shadow:inset 3px 0 0 var(--ok-ink)}
+table.fmt tr[data-st=detected] td:first-child{box-shadow:inset 3px 0 0 var(--warn-ink)}
+table.fmt tr[data-st=unhandled] td:first-child{box-shadow:inset 5px 0 0 var(--risk-ink)}
+table.fmt{width:100%;min-width:0;border-collapse:separate;border-spacing:0;font-size:.88rem}
+table.fmt th{font-size:.74rem;font-weight:600;color:var(--muted);text-align:left;padding:.4rem .5rem;
+  border-bottom:1px solid var(--rule-strong);vertical-align:bottom}
+table.fmt td{padding:.55rem .5rem;border-bottom:1px solid var(--rule);vertical-align:top;line-height:1.45;overflow-wrap:break-word}
+table.fmt td.mode{font-weight:600;width:15%} table.fmt td.ev{width:12rem} table.fmt td.st{width:7rem}
+html:not(:lang(en)) table.fmt thead th{word-break:keep-all}
+table.fmt td code{word-break:normal;overflow-wrap:anywhere}
+table.fmt .ktag{margin-right:0;white-space:normal}
+table.fmt .badge{position:static;display:inline-block;margin-left:.35rem;vertical-align:middle;width:1.3rem;height:1.3rem;
+  line-height:1.3rem;font-size:.72rem}
+.nosig{color:var(--risk-ink);font-weight:650} .nosig::before{content:"⚠ "}
+.noref{color:var(--muted);font-style:italic;font-size:.82rem}
+.fplan{display:inline-block;white-space:nowrap;margin-left:.35rem;font-family:var(--mono);font-size:.66rem;letter-spacing:.05em;
+  text-transform:uppercase;color:var(--muted);border:1px dashed var(--rule-strong);border-radius:3px;padding:0 .3rem;font-weight:400}
+.fsrc{display:block;margin-top:.3rem;font-size:.8rem;color:var(--muted);font-style:italic}
+/* Break at the <wbr> points first; a single run longer than the column still
+   breaks anywhere rather than push the table or the page sideways. */
+a.fref{font-family:var(--mono);font-size:.8rem;overflow-wrap:anywhere}
+a.fref::after{content:"\00a0↗";font-family:var(--sans)}
+.bmap .fm{cursor:pointer}
+.bmap .cnode.fm:hover,.bmap .cnode.fm.on{border-color:var(--accent);background:var(--accent-tint)}
+.bmap .fm .fn-c{color:var(--link);text-decoration:underline dotted;text-underline-offset:2px}
+.bmap .carrow.fm:hover .hl,.bmap .carrow.fm.on .hl{color:var(--accent)}
+.bmap .carrow.fm.on{--ac:var(--accent);background:var(--accent-tint);border-radius:6px}
+.bmap .fm.on .fn-c{color:var(--accent);font-weight:600}
+.bmap .fm:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.bmap .fn-c{display:block;font-family:var(--mono);font-size:max(12px,.62rem);color:var(--muted);margin-top:.2rem;font-weight:400;
+  white-space:nowrap;text-align:center}
+/* A phone has no room for six columns: each mode becomes a short card whose
+   cells carry their own label, so nothing scrolls sideways at all. Same
+   breakpoint as the map stacking, so the two always change together. */
+@media (max-width:56rem){
+  .fmodes .tscroll{overflow-x:visible}
+  table.fmt{min-width:0}
+  table.fmt thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+  table.fmt,table.fmt tbody,table.fmt tr,table.fmt td,table.fmt th{display:block;width:auto}
+  table.fmt tr.fgh{border:0;padding:0;margin:0;background:none}
+  table.fmt tr.fgh th{padding:.9rem 0 .4rem;border:0}
+  table.fmt tr.fgh .fct{display:block;margin:.15rem 0 0}
+  table.fmt tbody.fgroup.on{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px;background:var(--accent-tint)}
+  table.fmt tbody.fgroup.on td,table.fmt tbody.fgroup.on th,
+  table.fmt tbody.fgroup.on td:first-child,table.fmt tbody.fgroup.on tr.fgh th{box-shadow:none;background:none}
+  table.fmt tbody.fgroup.on tr.fgh th{padding-left:.5rem}
+  table.fmt tbody.fgroup.on tr:not(.fgh){margin:0 .4rem .55rem}
+  table.fmt tr{border:1px solid var(--rule);border-radius:6px;padding:.4rem .6rem;margin-bottom:.55rem;background:var(--card);
+    position:relative;border-left-width:4px}
+  table.fmt tr[data-st] td:first-child{box-shadow:none;padding-left:0}
+  table.fmt tr[data-st=handled]{border-left-color:var(--ok-ink)} table.fmt tr[data-st=detected]{border-left-color:var(--warn-ink)}
+  table.fmt tr[data-st=unhandled]{border-left-color:var(--risk-ink)}
+  table.fmt td.mode{padding-right:7.5rem}
+  table.fmt td.st{position:absolute;top:.55rem;right:.6rem;max-width:7rem;text-align:right}
+  table.fmt td{border:0;padding:.2rem 0}
+  table.fmt td.mode{width:auto;font-size:.95rem} table.fmt td.ev,table.fmt td.st{width:auto}
+  table.fmt td:not(.mode)::before{content:attr(data-l);display:block;font-family:var(--mono);font-size:.66rem;
+    letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+  table.fmt td.st::before{display:none!important}
+}
+html:not(:lang(en)) table.fmt td::before{text-transform:none!important;letter-spacing:.02em}
+/* The narrowest phones: the state tag takes its own line above the title,
+   so the title keeps the full card width. */
+@media (max-width:30rem){
+  table.fmt tr:not(.fgh){display:flex;flex-direction:column}
+  table.fmt td.st{position:static;order:-1;max-width:none;text-align:left;padding:0 0 .1rem!important}
+  table.fmt td.mode{padding-right:0}
+}
 /* compare (from → to) */
 /* A table wider than its card scrolls inside this box, never the page. */
 .tscroll{overflow-x:auto;max-width:100%;-webkit-overflow-scrolling:touch}
@@ -790,7 +870,22 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
     why:W3('why','為什麼','为什么'), fix:W3('why this fixes it','為什麼這樣就好','为什么这样就好'),
     proof:W3('Proof','證據','证据'), see:W3('see card','看卡片','看卡片'),
     verified:W3('verified','已驗證','已验证'), unknown:W3('state not given','未標示狀態','未标示状态'), 'code-only':W3('code only','只有程式碼','只有代码'),
-    absent:W3('absent','沒有證據','没有证据')
+    absent:W3('absent','沒有證據','没有证据'),
+    fmodes:W3('Failure modes — the runbook','失效模式與處置（runbook）','失效模式与处置（runbook）'),
+    fmcap:W3('Every way each boundary can fail: the signal that fires first, what the user sees, what on-call does. Select a system or link on the map to mark its rows.',
+             '每個邊界會怎麼壞：最先響的訊號、使用者看到什麼、on-call 要做什麼。點選地圖上的系統或連線，標出它的那幾列。',
+             '每个边界会怎么坏：最先响的信号、用户看到什么、on-call 要做什么。点击地图上的系统或连线，标出它的那几行。'),
+    fmode:W3('Failure mode','失效模式','失效模式'), fdetect:W3('Signal before a user notices','使用者發現前的訊號','用户发现前的信号'),
+    fimpact:W3('What the user sees','使用者看到什麼','用户看到什么'), faction:W3('Runbook','處置（runbook）','处置（runbook）'),
+    fref:W3('Evidence','證據','证据'), fstate:W3('State','狀態','状态'),
+    'fs-handled':W3('handled','已處理','已处理'), 'fs-detected':W3('detected, not handled','有偵測、未處理','有检测、未处理'),
+    'fs-unhandled':W3('unhandled','未處理','未处理'), 'fs-unknown':W3('state not given','未標示狀態','未标示状态'),
+    nosig:W3('no signal today','目前沒有訊號','目前没有信号'), noref:W3('no code reference','沒有程式碼出處','没有代码出处'),
+    refused:W3('link refused','連結被拒','链接被拒'), fplan:W3('not built yet','尚未實作','尚未实现'),
+    fsrc:W3('from the document','出自文件','出自文档'), fpin:W3('finding','發現','发现'),
+    q1:W3('“','「','“'), q2:W3('”','」','”'),
+    fmFor:W3('Failure modes of ','失效模式：','失效模式：'),
+    fmOne:W3('mode','種失效','种失效'), fmMany:W3('modes','種失效','种失效')
   };
   const sub=(v,lang)=>{
     if(v==null) return '';
@@ -828,8 +923,10 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
     nodes.forEach((nd,i)=>{
       const st=hot.has(nd.id)?(after?'good':'bad'):'';
       const badge=(opts.badges||{})[nd.id];
-      h+='<div class="cnode k-'+E(nd.kind||'service')+' '+st+'" style="grid-column:'+(2*i+1)+';grid-row:1">'+
-         (badge?badge:'')+'<div class="nm">'+softBreaks(rich(pick(nd.name,lang)))+'</div>'+sub((row.sub||{})[nd.id],lang)+'</div>';
+      const fa=opts.fm?opts.fm(nd.id):'';
+      h+='<div class="cnode k-'+E(nd.kind||'service')+' '+st+(fa?' fm':'')+'"'+fa+' style="grid-column:'+(2*i+1)+';grid-row:1">'+
+         (badge?badge:'')+'<div class="nm">'+softBreaks(rich(pick(nd.name,lang)))+'</div>'+sub((row.sub||{})[nd.id],lang)+
+         (fa?opts.fmCount(nd.id):'')+'</div>';
       if(whyAt===nd.id && row.why.text){
         const left=i<n/2; const span=Math.min(3,2*n+1-(2*i));
         const gc=left?((2*i+1)+' / span '+Math.max(1,span)):(Math.max(1,2*i-1)+' / '+(2*i+2));
@@ -842,8 +939,10 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
       const hb=(opts.linkBadges||{})[i];
       if(hb) ac='bad'; else if(opts.okLinks && i<n-1) ac='okl';
       const hl=(row.hops||{})[i];
-      h+='<div class="carrow '+ac+'" style="grid-column:'+(2*i+2)+';grid-row:1">'+(hb?hb:'')+
-         (hl!=null?'<div class="hl">'+softBreaks(E(typeof hl==='string'?hl:pick(hl,lang)))+'</div>':'')+'<div class="ln"></div></div>';
+      const la=(opts.fm&&i<n-1)?opts.fm(nd.id+'>'+nodes[i+1].id):'';
+      h+='<div class="carrow '+ac+(la?' fm':'')+'"'+la+' style="grid-column:'+(2*i+2)+';grid-row:1">'+(hb?hb:'')+
+         (hl!=null?'<div class="hl">'+softBreaks(E(typeof hl==='string'?hl:pick(hl,lang)))+'</div>':'')+'<div class="ln"></div>'+
+         (la?opts.fmCount(nd.id+'>'+nodes[i+1].id):'')+'</div>';
     });
     // One span: as bare flex children, text and <code> would each shrink to a column.
     if(row.outcome!=null) h+='<div class="cout" style="grid-column:'+(2*n+1)+';grid-row:1"><span>'+softBreaks(rich(pick(row.outcome,lang)))+'</span></div>';
@@ -876,8 +975,14 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
       if(String(f.at).includes('>')){ const a=String(f.at).split('>')[0]; if(ix[a]!=null) lb[ix[a]]=(lb[ix[a]]||'')+b; }
       else nb[f.at]=(nb[f.at]||'')+b;
     });
+    const FM=Array.isArray(s.failures)?s.failures.filter(f=>f&&typeof f==='object'&&!Array.isArray(f)):[];
+    const fmAt=Object.create(null); FM.forEach(f=>{ const k=String(f.at==null?'':f.at); fmAt[k]=(fmAt[k]||0)+1; });
+    const nm=Object.create(null); (s.systems||[]).forEach(n=>nm[n.id]=pick(n.name,lang));
+    const fmName=k=>pick(KL.fmFor,lang)+String(k).split('>').map(x=>nm[x]!=null?nm[x]:x).join(' → ');
     let h='<div class="bmap">'+laneHTML(s.systems||[], {sub:s.sub||{}, hops:s.hops||{}, hot:[]}, 'map', lang,
-      {badges:nb, linkBadges:lb, okLinks:true})+'</div>';
+      {badges:nb, linkBadges:lb, okLinks:true,
+       fm:k=>fmAt[k]?' data-at="'+E(k)+'" role="button" tabindex="0" aria-label="'+E(fmName(k)+': '+fmAt[k]+' '+pick(fmAt[k]===1?KL.fmOne:KL.fmMany,lang))+'"':'',
+       fmCount:k=>'<span class="fn-c">'+E(fmAt[k])+' '+pick(fmAt[k]===1?KL.fmOne:KL.fmMany,lang)+'</span>'})+'</div>';
     if(F.length){
       h+='<div class="bfind">'+F.map(f=>{
         const target=secs.findIndex(x=>x.kind==='chain' && f.card && pick(x.heading,'en')===f.card);
@@ -888,7 +993,113 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
     } else {
       h+='<div class="bok">'+rich(pick(s.ok,lang))+'</div>';
     }
+    return h+failuresHTML(s, FM, lang);
+  }
+  // The failure-mode table (boundary-review.md §3): every mode of every
+  // boundary, grouped in map order. Evidence links pass the same default-deny
+  // rule as links in text, narrowed to https, and open in a new tab.
+  // The host a reader sees must be the host the browser opens: plain ASCII
+  // labels, no port, no trailing dot, no userinfo, no percent-escape, no
+  // backslash, and no dot segment the browser would fold away (which could
+  // turn /blob/<sha>/../main/ into an unpinned branch link).
+  const REF_HOST=/^https:\/\/[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*(?=[\/?#]|$)/i;
+  const DOT_SEG=/\/(?:\.|%2e){1,2}(?=[\/?#]|$)/i;
+  // GitHub folds // and decodes %xx in a path, so /o//r/blob/… or /bl%6fb/
+  // would open a fork or a branch the label and the pin check never saw.
+  const EMPTY_SEG=/^https:\/\/[^\/?#]+(?:\/[^?#]*)?\/\//i;   // path from a fixed point: no quadratic backtracking
+  const GITHUB_HOST=/^https:\/\/(?:(?:www\.)?github\.com|raw\.github(?:usercontent)?\.com|media\.githubusercontent\.com)(?=[\/?#]|$)/i;
+  const GITHUB_ESC=/^https:\/\/[^\/?#]+(?:\/[^?#%]*)?%/i;
+  const REF_MAX=2048;
+  function safeRef(u){
+    if(typeof u!=='string' || u.length>REF_MAX) return null;
+    const h=safeHref(u);
+    return (h!=null && REF_HOST.test(h) && !/["'<>`\\]/.test(h) && !DOT_SEG.test(h) && !EMPTY_SEG.test(h) &&
+            !(GITHUB_HOST.test(h) && GITHUB_ESC.test(h))) ? h : null;
+  }
+  // A GitHub ref names its repository, so a fork cannot pass as the real one.
+  function refLabel(u){
+    const g=/^https:\/\/(?:www\.)?github\.com\/([^\/?#]+)\/([^\/?#]+)\/(?:blob|blame|raw)\/[^\/?#]+\/([^#?]+)(?:\?[^#]*)?(?:#L(\d+)(?:C\d+)?(?:-L(\d+)(?:C\d+)?)?)?/i.exec(u);
+    if(g){ const f=g[3].replace(/\/$/,'').split('/').pop()||g[3];
+      return g[1]+'/'+g[2]+' · '+f+(g[4]?':'+g[4]+(g[5]?'\u2060–\u2060'+g[5]:''):''); }   // the range never splits at its dash
+    const m=/^https:\/\/([^\/?#]+)([^?#]*)/i.exec(u); if(!m) return u;
+    const path=(m[2]||'').replace(/\/$/,'');
+    // Any other GitHub link still leads with its owner/repo.
+    const gh=/^https:\/\/(?:(?:www\.)?github\.com|raw\.github(?:usercontent)?\.com|media\.githubusercontent\.com\/media)\/([^\/?#]+)\/([^\/?#]+)(\/[^?#]*)?/i.exec(u);
+    if(gh){ const rest=(gh[3]||'').replace(/\/$/,''); return gh[1]+'/'+gh[2]+(rest?' · '+(rest.length>28?'…'+rest.slice(-24):rest.slice(1)):''); }
+    // Elsewhere keep the head of the path, where an owner usually sits, and the last segment.
+    const segs=path.split('/').filter(Boolean);
+    return m[1]+(path.length>28&&segs.length>3?'/'+segs[0]+'/'+segs[1]+'/…/'+segs[segs.length-1]:path);
+  }
+  function refHTML(f, lang){
+    let h;
+    if(f.ref==null) h='<span class="noref">'+pick(KL.noref,lang)+'</span>';
+    else { const href=safeRef(f.ref);
+      h=href==null?'<span class="noref">'+pick(KL.refused,lang)+'</span>':
+        '<a class="fref" href="'+E(href)+'" target="_blank" rel="noopener noreferrer" title="'+E(href)+'">'+
+        (l=>l.includes(' · ')?l.replace(' · ',' · <wbr>'):l.replace(/\//g,'/<wbr>'))(E(refLabel(href)))+'</a>'; }
+    if(f.source!=null) h+='<span class="fsrc">'+pick(KL.fsrc,lang)+(lang==='en'?' ':'')+pick(KL.q1,lang)+rich(pick(f.source,lang))+pick(KL.q2,lang)+'</span>';
     return h;
+  }
+  const FSTATE=Object.assign(Object.create(null),{handled:'ok',detected:'warn',unhandled:'risk'});
+  function failuresHTML(s, FM, lang){
+    if(!FM.length) return '';
+    const sys=s.systems||[]; const name=Object.create(null); sys.forEach(n=>name[n.id]=pick(n.name,lang));
+    const order=[]; sys.forEach((n,i)=>{ order.push(String(n.id)); if(i<sys.length-1) order.push(n.id+'>'+sys[i+1].id); });
+    const keys=[...new Set(FM.map(f=>String(f.at==null?'':f.at)))]
+      .sort((a,b)=>(order.indexOf(a)<0?1e9:order.indexOf(a))-(order.indexOf(b)<0?1e9:order.indexOf(b)));
+    const label=k=>k.includes('>')?k.split('>').map(x=>name[x]!=null?name[x]:x).join(' →\u00a0'):(name[k]!=null?name[k]:k);
+    const C=['fmode','fdetect','fimpact','faction','fref','fstate'].map(c=>pick(KL[c],lang));
+    let h='<div class="fmodes"><h4>'+pick(KL.fmodes,lang)+'</h4><p class="fcap">'+pick(KL.fmcap,lang)+'</p>';
+    // One table, one <tbody> per boundary: the columns line up down the whole list.
+    h+=tscroll(KL.fmodes,lang)+'<table class="fmt" role="table"><thead role="rowgroup"><tr role="row">'+C.map(c=>'<th scope="col" role="columnheader">'+E(c)+'</th>').join('')+'</tr></thead>';
+    keys.forEach(k=>{
+      // Worst first inside a boundary: unhandled, then detected, then handled.
+      const RANK=Object.assign(Object.create(null),{unhandled:0,detected:1,handled:2});
+      const rank=f=>(typeof f.state==='string'&&f.state in RANK)?RANK[f.state]:-1;
+      const rows=FM.filter(f=>String(f.at==null?'':f.at)===k).map((f,i)=>[f,i])
+        .sort((a,b)=>rank(a[0])-rank(b[0])||a[1]-b[1]).map(x=>x[0]);
+      const cnt=Object.create(null); rows.forEach(f=>{ const st=(typeof f.state==='string'&&FSTATE[f.state])?f.state:'unknown'; cnt[st]=(cnt[st]||0)+1; });
+      h+='<tbody class="fgroup" role="rowgroup" data-fg="'+E(k)+'"><tr class="fgh" role="row"><th colspan="6" scope="rowgroup" role="rowheader"><span class="fgn">'+
+        softBreaks(rich(label(k)))+'</span><span class="fct">'+
+        ['unhandled','detected','handled','unknown'].filter(x=>cnt[x]).map(x=>cnt[x]+' '+pick(KL['fs-'+x],lang)).join(' · ')+
+        '</span></th></tr>';
+      rows.forEach(f=>{
+        const st=(typeof f.state==='string'&&FSTATE[f.state])?f.state:'unknown';
+        const pin=f.finding!=null?'<span class="badge '+E(((s.findings||[]).find(x=>x&&x.n===f.finding)||{}).tone||'warn')+
+          '" title="'+E(pick(KL.fpin,lang)+' '+f.finding)+'">'+E(f.finding)+'</span>':'';
+        const d=pick(f.detect,lang);
+        h+='<tr role="row" data-st="'+st+'"><td role="cell" class="mode" data-l="'+E(C[0])+'">'+rich(pick(f.mode,lang))+pin+
+          (f.planned?'<span class="fplan">'+pick(KL.fplan,lang)+'</span>':'')+'</td>'+
+          '<td role="cell" data-l="'+E(C[1])+'">'+(String(d).trim()?softBreaks(rich(d)).split(/(<[^>]*>)/).map((t,i)=>i%2?t:t.replace(/[{,=]/g,'$&<wbr>')).join(''):'<span class="nosig">'+pick(KL.nosig,lang)+'</span>')+'</td>'+
+          '<td role="cell" data-l="'+E(C[2])+'">'+rich(pick(f.impact,lang))+'</td>'+
+          '<td role="cell" data-l="'+E(C[3])+'">'+rich(pick(f.action,lang))+'</td>'+
+          '<td role="cell" class="ev" data-l="'+E(C[4])+'">'+refHTML(f,lang)+'</td>'+
+          '<td role="cell" class="st" data-l="'+E(C[5])+'"><span class="ktag '+(FSTATE[st]||'')+'">'+pick(KL['fs-'+st],lang)+'</span></td></tr>';
+      });
+      h+='</tbody>';
+    });
+    return h+'</table></div></div>';
+  }
+  // Clicking a system or link on the map marks its failure-mode rows; a
+  // second click on the same one clears the mark.
+  function bindFailures(kb){
+    let cur=null;
+    const gid=k=>'fg-'+kb.dataset.sec+'-'+[...k].map(c=>c.codePointAt(0).toString(36)).join('-');
+    kb.querySelectorAll('.fgroup').forEach(g=>{ g.id=gid(g.dataset.fg); });
+    const pick1=k=>{
+      cur=(cur===k)?null:k;
+      kb.querySelectorAll('.bmap .fm').forEach(x=>{ const on=x.dataset.at===cur; x.classList.toggle('on',on);
+        x.setAttribute('aria-pressed',on?'true':'false'); });
+      let first=null;
+      kb.querySelectorAll('.fgroup').forEach(g=>{ const on=g.dataset.fg===cur; g.classList.toggle('on',on); if(on&&!first) first=g; });
+      const calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if(first) first.scrollIntoView({block:'nearest',behavior:calm?'auto':'smooth'});
+    };
+    kb.querySelectorAll('.bmap .fm').forEach(el=>{
+      el.setAttribute('aria-pressed','false'); el.setAttribute('aria-controls',gid(el.dataset.at));
+      el.addEventListener('click',()=>pick1(el.dataset.at));
+      el.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); pick1(el.dataset.at); } });
+    });
   }
   function compareHTML(s, lang){
     const c=s.cols||[];
@@ -1277,6 +1488,7 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
       const kb=el.querySelector('.kbox');
       if(kb){ kb.innerHTML=KR[s.kind](s,lang);
         if(s.kind==='chart') drawChart(kb,s,lang);
+        if(s.kind==='boundary') bindFailures(kb);
         kb.querySelectorAll('button[data-go]').forEach(b=>b.addEventListener('click',()=>go(+b.dataset.go))); }
       const cl=el.querySelector('[data-i=claim]'); if(cl) cl.innerHTML=rich(pick(s.claim,lang));
       const h=el.querySelector('[data-i=heading]'); if(h) h.textContent=pick(s.heading,lang);
