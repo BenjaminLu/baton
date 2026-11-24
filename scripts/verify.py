@@ -345,9 +345,13 @@ def check_boundary_review(html, data):
 
 
 FAILURE_STATES = {"handled", "detected", "unhandled"}
-GITHUB_CODE = re.compile(r"(?ai)^https://(?:www\.)?github\.com(?::443)?/[^/]+/[^/]+/(?:blob|blame|tree|raw)/")
-GITHUB_BLOB = re.compile(r"(?ai)^https://(?:www\.)?github\.com(?::443)?/[^/]+/[^/]+/(?:blob|blame|raw)/([^/]+)/[^#]+"
+GITHUB_CODE = re.compile(r"(?ai)^https://(?:www\.)?github\.com/[^/]+/[^/]+/(?:blob|blame|tree|raw)/")
+GITHUB_BLOB = re.compile(r"(?ai)^https://(?:www\.)?github\.com/([^/]+/[^/]+)/(?:blob|blame|raw)/([^/]+)/[^#]+"
                          r"(#L\d+(?:C\d+)?(?:-L\d+(?:C\d+)?)?)?$")
+
+
+REF_HOST = re.compile(r"(?ai)^https://[a-z0-9-]+(?:\.[a-z0-9-]+)*(?=[/?#]|$)")
+DOT_SEG = re.compile(r"(?ai)/(?:\.|%2e){1,2}(?=[/?#]|$)")
 
 
 def safe_ref(url):
@@ -355,8 +359,11 @@ def safe_ref(url):
     space, no raw quote / angle bracket / backtick (the page's safeRef())."""
     if not isinstance(url, str) or safe_href(url) is None or not re.match(r"(?ai)^https://", url):
         return None
-    if re.search(r"[\"'<>`]", url) or re.match(r"(?ai)^https://[^/?#]*[@\\]", url):
-        return None             # userinfo or a backslash would make the shown host lie
+    # The host shown must be the host opened (the page's REF_HOST / DOT_SEG):
+    # ASCII labels only, no port, trailing dot, userinfo or percent-escape; no
+    # backslash; no dot segment that would fold /blob/<sha>/../main/ away.
+    if re.search(r"[\"'<>`\\]", url) or not REF_HOST.match(url) or DOT_SEG.search(url):
+        return None
     return url
 
 
@@ -412,7 +419,8 @@ def check_failures(data, register="engineer"):
         return ["`failures` must be a list of failure modes"], warnings
     hashable = lambda v: isinstance(v, (int, str)) and not isinstance(v, bool)
     finds = sec.get("findings") if isinstance(sec.get("findings"), list) else []
-    pins = {f.get("n") for f in finds if isinstance(f, dict) and hashable(f.get("n"))}
+    pins = {f.get("n"): ("" if f.get("at") is None else _js_str(f.get("at")))
+            for f in finds if isinstance(f, dict) and hashable(f.get("n"))}
     covered = set()
     drawn = {k for k, _, _ in _links(systems)}
     for i, f in enumerate(rows):
@@ -446,18 +454,22 @@ def check_failures(data, register="engineer"):
                     if not m:
                         problems.append(f"{label}: `ref` is not a GitHub file permalink — use "
                                         "/blob/<sha>/<path>#La-Lb")
-                    elif not re.fullmatch(r"(?i)[0-9a-f]{7,40}", m.group(1)):
+                    elif not re.fullmatch(r"(?ai)[0-9a-f]{7,40}", m.group(2)):
                         problems.append(f"{label}: `ref` is a GitHub link not pinned to a commit — use "
                                         "/blob/<sha>/<path>#La-Lb; a branch link drifts")
-                    elif not m.group(2):
+                    elif not m.group(3):
                         warnings.append(f"{label}: `ref` names a file but no lines — add #La-Lb")
         if st == "handled" and ref is None and not _text(f.get("source")).strip():
             problems.append(f"{label}: `handled` needs `ref` — the code line that handles it "
                             "(or, on a proposal, the `source` sentence)")
         if st == "detected" and not _text(f.get("detect")).strip():
             problems.append(f"{label}: `detected` needs `detect` — the signal that notices it")
-        if f.get("finding") is not None and not (hashable(f["finding"]) and f["finding"] in pins):
-            problems.append(f"{label}: `finding` {f['finding']!r} is not a pin on the map")
+        if f.get("finding") is not None:
+            if not (hashable(f["finding"]) and f["finding"] in pins):
+                problems.append(f"{label}: `finding` {f['finding']!r} is not a pin on the map")
+            elif pins[f["finding"]] != at:
+                problems.append(f'{label}: `finding` {f["finding"]} is pinned at "{pins[f["finding"]]}", '
+                                f'not at this row\'s "{at}" — point it at the pin on the same boundary')
         if f.get("introduced") and st == "unhandled" and f.get("finding") is None:
             problems.append(f"{label}: unhandled and introduced by this work — that is a finding; "
                             "give it a pin and set `finding` to its number")

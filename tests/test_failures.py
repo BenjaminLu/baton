@@ -24,7 +24,13 @@ HOSTILE = ["javascript:alert(1)", "JaVaScRiPt:alert(1)", "data:text/html,<script
            "//evil.example/a", "mailto:a@b.c", 'https://a"onmouseover="' + on("ref") + '"',
            "https://a/'x", "https://a/<b>", "java\u0000script:x", "\u007fhttps://evil.example",
            "http\u017f://evil.example/a", "https://github.com@evil.example/o/r/blob/abcdef1/x.py#L1",
-           "https://evil.example\\@github.com/x"]
+           "https://evil.example\\@github.com/x",
+           # host and path normalisation: each would open something other than what is shown
+           f"https://github.com./o/r/blob/{SHA}/a.go#L1", f"https://github.com:443/o/r/blob/{SHA}/a.go#L1",
+           f"https://github.com:0443/o/r/blob/{SHA}/a.go#L1", f"https://github%2ecom/o/r/blob/{SHA}/a.go#L1",
+           f"https://\uff47ithub.com/o/r/blob/{SHA}/a.go#L1", f"https://github.com/o/r/blob/{SHA}/../main/a.go",
+           f"https://github.com/o/r/blob/{SHA}/%2e%2e/main/a.go", f"https://github.com/o/r/blob/{SHA}\\..\\main/a.go",
+           "https://evil.example/a/.", "https://.evil.example/a", "https://evil..example/a"]
 
 
 def chain(heading):
@@ -179,6 +185,12 @@ class VerifyFailures(unittest.TestCase):
         p["sections"][1]["failures"][1]["finding"] = 7
         self.assertTrue(any("`finding` 7 is not a pin" in x for x in fail_problems(p)))
 
+    def test_finding_must_sit_on_the_same_boundary(self):
+        p = packet()
+        p["sections"][1]["failures"][3].update(introduced=True, finding=1)   # api>worker row, pin at worker>fcm
+        out = fail_problems(p)
+        self.assertTrue(any('pinned at "worker>fcm", not at this row' in x for x in out), out)
+
     def test_malformed_shapes_do_not_crash(self):
         for bad in ("x", 3, {"a": 1}, [None, "x", 3]):
             p = packet(failures=bad)
@@ -263,6 +275,8 @@ def page_fns(calls):
     src = (ROOT / "templates" / "packet.html").read_text()
     parts = [re.search(r"  const E = .*?\n(?=\n)", src, re.S).group(0),
              re.search(r"  function safeHref\(u\)\{.*?\n  \}\n", src, re.S).group(0),
+             re.search(r"  const REF_HOST=.*?\n", src).group(0),
+             re.search(r"  const DOT_SEG=.*?\n", src).group(0),
              re.search(r"  function safeRef\(u\)\{.*?\n  \}\n", src, re.S).group(0),
              re.search(r"  function refLabel\(u\)\{.*?\n  \}\n", src, re.S).group(0)]
     js = "\n".join(parts).replace("const ", "var ") + "\nconsole.log(JSON.stringify(" + calls + "));"
@@ -285,8 +299,8 @@ class PageRefRule(unittest.TestCase):
                                     f"https://www.github.com/o/r/blame/{SHA}/c.md?plain=1#L5",
                                     "https://firebase.google.com/docs/cloud-messaging/manage-tokens"]) +
                        ".map(refLabel)")
-        self.assertEqual(out[:2], ["worker.go:40–58", "b.py:7–9"])
-        self.assertEqual(out[2], "c.md:5")
+        self.assertEqual(out[:2], ["example/notes-api · worker.go:40–58", "o/r · b.py:7–9"])
+        self.assertEqual(out[2], "o/r · c.md:5")
         self.assertTrue(out[3].startswith("firebase.google.com/…"), out[3])
 
 
@@ -302,7 +316,11 @@ window.addEventListener('load',()=>setTimeout(()=>{
     nosig:q('.nosig').length, planned:q('.fplan').length, pins:q('table.fmt .badge').map(b=>b.textContent),
     states:q('table.fmt .ktag').map(e=>e.className),
     onattrs:q('*').flatMap(e=>[...e.attributes].filter(x=>/^on/i.test(x.name)).map(x=>e.tagName+' '+x.name)),
-    mapTargets:q('.bmap .fm').map(e=>e.dataset.at), imgs:q('main img, main script').length};
+    mapTargets:q('.bmap .fm').map(e=>e.dataset.at), imgs:q('main img, main script').length,
+    fcmOrder:q('tbody.fgroup[data-fg="worker>fcm"] tr[data-st]').map(r=>r.dataset.st),
+    roles:{table:q('table.fmt[role=table]').length, rowgroup:q('table.fmt [role=rowgroup]').length,
+      rows:q('table.fmt tbody tr[role=row]').length, cells:q('table.fmt td[role=cell]').length,
+      colheads:q('table.fmt th[role=columnheader]').length, rowheads:q('table.fmt th[role=rowheader]').length}};
   const t=document.querySelector('.bmap .carrow.fm[data-at="worker>fcm"]'); if(t) t.click();
   out.marked=q('.fgroup.on').map(g=>g.dataset.fg);
   const k=document.querySelector('.bmap .cnode.fm[data-at="fcm"]');
@@ -322,6 +340,7 @@ class RenderedFailures(unittest.TestCase):
     def setUpClass(cls):
         spec = packet()
         rows = spec["sections"][1]["failures"]
+        rows[1], rows[2] = rows[2], rows[1]          # handled first in the packet
         rows.append({"at": "api", "mode": {"en": "a planned cache goes stale"},
                      "impact": {"en": "old notes show"}, "action": {"en": "expire after 60 s"},
                      "state": "unhandled", "planned": True,
@@ -361,7 +380,7 @@ class RenderedFailures(unittest.TestCase):
         for r in refs:
             self.assertTrue(r["href"].startswith("https://"), r)
             self.assertEqual((r["target"], r["rel"]), ("_blank", "noopener noreferrer"))
-        self.assertEqual(refs[1]["text"].replace("​", ""), "worker.go:40–58 ↗".replace(" ↗", ""))
+        self.assertEqual(refs[1]["text"], "example/notes-api · worker.go:40–58")
 
     def test_hostile_refs_render_as_text(self):
         self.assertEqual(self.out["refused"].count("link refused"), self.n_hostile)
@@ -378,6 +397,17 @@ class RenderedFailures(unittest.TestCase):
         self.assertIn("ktag ok", self.out["states"])
         self.assertIn("ktag warn", self.out["states"])
         self.assertIn("ktag risk", self.out["states"])
+
+    def test_worst_first_within_a_boundary(self):
+        # the packet lists handled before unhandled here; the page must put unhandled first
+        self.assertEqual(self.out["fcmOrder"], ["unhandled", "handled"])
+
+    def test_cards_keep_table_semantics(self):
+        r, n = self.out["roles"], len(self.out["groups"])
+        self.assertEqual((r["table"], r["colheads"], r["rowheads"]), (1, 6, n))
+        self.assertEqual(r["rowgroup"], n + 1)
+        self.assertEqual(r["cells"], 6 * self.out["rows"])
+        self.assertEqual(r["rows"], self.out["rows"] + n)
 
     def test_map_marks_rows(self):
         self.assertIn("worker>fcm", self.out["mapTargets"])

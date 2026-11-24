@@ -523,6 +523,7 @@ a.fref::after{content:" ↗";font-family:var(--sans)}
   table.fmt td:not(.mode)::before{content:attr(data-l);display:block;font-family:var(--mono);font-size:.66rem;
     letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
   table.fmt td.st::before{display:none!important}
+  a.fref{white-space:normal;overflow-wrap:anywhere}   /* a long owner/repo never widens a card */
 }
 html:not(:lang(en)) table.fmt td::before{text-transform:none!important;letter-spacing:.02em}
 /* The narrowest phones: the state tag takes its own line above the title,
@@ -876,7 +877,7 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
     fmode:W3('Failure mode','失效模式','失效模式'), fdetect:W3('Signal before a user notices','使用者發現前的訊號','用户发现前的信号'),
     fimpact:W3('What the user sees','使用者看到什麼','用户看到什么'), faction:W3('Runbook','處置（runbook）','处置（runbook）'),
     fref:W3('Evidence','證據','证据'), fstate:W3('State','狀態','状态'),
-    'fs-handled':W3('handled','已處理','已处理'), 'fs-detected':W3('detected','有偵測、未處理','有检测、未处理'),
+    'fs-handled':W3('handled','已處理','已处理'), 'fs-detected':W3('detected, not handled','有偵測、未處理','有检测、未处理'),
     'fs-unhandled':W3('unhandled','未處理','未处理'), 'fs-unknown':W3('state not given','未標示狀態','未标示状态'),
     nosig:W3('no signal today','目前沒有訊號','目前没有信号'), noref:W3('no code reference','沒有程式碼出處','没有代码出处'),
     refused:W3('link refused','連結被拒','链接被拒'), fplan:W3('not built yet','尚未實作','尚未实现'),
@@ -996,15 +997,22 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
   // The failure-mode table (boundary-review.md §3): every mode of every
   // boundary, grouped in map order. Evidence links pass the same default-deny
   // rule as links in text, narrowed to https, and open in a new tab.
+  // The host a reader sees must be the host the browser opens: plain ASCII
+  // labels, no port, no trailing dot, no userinfo, no percent-escape, no
+  // backslash, and no dot segment the browser would fold away (which could
+  // turn /blob/<sha>/../main/ into an unpinned branch link).
+  const REF_HOST=/^https:\/\/[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*(?=[\/?#]|$)/i;
+  const DOT_SEG=/\/(?:\.|%2e){1,2}(?=[\/?#]|$)/i;
   function safeRef(u){
     if(typeof u!=='string') return null;
     const h=safeHref(u);
-    // Userinfo or a backslash in the authority would make the shown host lie.
-    return (h!=null && /^https:\/\//i.test(h) && !/["'<>`]/.test(h) && !/^https:\/\/[^\/?#]*[@\\]/i.test(h)) ? h : null;
+    return (h!=null && REF_HOST.test(h) && !/["'<>`\\]/.test(h) && !DOT_SEG.test(h)) ? h : null;
   }
+  // A GitHub ref names its repository, so a fork cannot pass as the real one.
   function refLabel(u){
-    const g=/^https:\/\/(?:www\.)?github\.com(?::443)?\/[^\/]+\/[^\/]+\/(?:blob|blame|raw)\/[^\/]+\/([^#?]+)(?:\?[^#]*)?(?:#L(\d+)(?:C\d+)?(?:-L(\d+)(?:C\d+)?)?)?/i.exec(u);
-    if(g){ const f=g[1].replace(/\/$/,'').split('/').pop()||g[1]; return f+(g[2]?':'+g[2]+(g[3]?'–'+g[3]:''):''); }
+    const g=/^https:\/\/(?:www\.)?github\.com\/([^\/]+)\/([^\/]+)\/(?:blob|blame|raw)\/[^\/]+\/([^#?]+)(?:\?[^#]*)?(?:#L(\d+)(?:C\d+)?(?:-L(\d+)(?:C\d+)?)?)?/i.exec(u);
+    if(g){ const f=g[3].replace(/\/$/,'').split('/').pop()||g[3];
+      return g[1]+'/'+g[2]+' · '+f+(g[4]?':'+g[4]+(g[5]?'–'+g[5]:''):''); }
     const m=/^https:\/\/([^\/?#]+)([^?#]*)/i.exec(u); if(!m) return u;
     const path=(m[2]||'').replace(/\/$/,'');
     return m[1]+(path.length>28?'/…'+path.slice(-24):path);
@@ -1015,7 +1023,7 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
     else { const href=safeRef(f.ref);
       h=href==null?'<span class="noref">'+pick(KL.refused,lang)+'</span>':
         '<a class="fref" href="'+E(href)+'" target="_blank" rel="noopener noreferrer" title="'+E(href)+'">'+
-        E(refLabel(href)).replace(/\//g,'/<wbr>')+'</a>'; }
+        (l=>l.includes(' · ')?l.replace(' · ',' · <wbr>'):l.replace(/\//g,'/<wbr>'))(E(refLabel(href)))+'</a>'; }
     if(f.source!=null) h+='<span class="fsrc">'+pick(KL.fsrc,lang)+(lang==='en'?' ':'')+pick(KL.q1,lang)+rich(pick(f.source,lang))+pick(KL.q2,lang)+'</span>';
     return h;
   }
@@ -1030,7 +1038,7 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
     const C=['fmode','fdetect','fimpact','faction','fref','fstate'].map(c=>pick(KL[c],lang));
     let h='<div class="fmodes"><h4>'+pick(KL.fmodes,lang)+'</h4><p class="fcap">'+pick(KL.fmcap,lang)+'</p>';
     // One table, one <tbody> per boundary: the columns line up down the whole list.
-    h+=tscroll(KL.fmodes,lang)+'<table class="fmt"><thead><tr>'+C.map(c=>'<th scope="col">'+E(c)+'</th>').join('')+'</tr></thead>';
+    h+=tscroll(KL.fmodes,lang)+'<table class="fmt" role="table"><thead role="rowgroup"><tr role="row">'+C.map(c=>'<th scope="col" role="columnheader">'+E(c)+'</th>').join('')+'</tr></thead>';
     keys.forEach(k=>{
       // Worst first inside a boundary: unhandled, then detected, then handled.
       const RANK=Object.assign(Object.create(null),{unhandled:0,detected:1,handled:2});
@@ -1038,7 +1046,7 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
       const rows=FM.filter(f=>String(f.at==null?'':f.at)===k).map((f,i)=>[f,i])
         .sort((a,b)=>rank(a[0])-rank(b[0])||a[1]-b[1]).map(x=>x[0]);
       const cnt=Object.create(null); rows.forEach(f=>{ const st=(typeof f.state==='string'&&FSTATE[f.state])?f.state:'unknown'; cnt[st]=(cnt[st]||0)+1; });
-      h+='<tbody class="fgroup" data-fg="'+E(k)+'"><tr class="fgh"><th colspan="6" scope="rowgroup"><span class="fgn">'+
+      h+='<tbody class="fgroup" role="rowgroup" data-fg="'+E(k)+'"><tr class="fgh" role="row"><th colspan="6" scope="rowgroup" role="rowheader"><span class="fgn">'+
         softBreaks(rich(label(k)))+'</span><span class="fct">'+
         ['unhandled','detected','handled','unknown'].filter(x=>cnt[x]).map(x=>cnt[x]+' '+pick(KL['fs-'+x],lang)).join(' · ')+
         '</span></th></tr>';
@@ -1047,13 +1055,13 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
         const pin=f.finding!=null?'<span class="badge '+E(((s.findings||[]).find(x=>x&&x.n===f.finding)||{}).tone||'warn')+
           '" title="'+E(pick(KL.fpin,lang)+' '+f.finding)+'">'+E(f.finding)+'</span>':'';
         const d=pick(f.detect,lang);
-        h+='<tr data-st="'+st+'"><td class="mode" data-l="'+E(C[0])+'">'+rich(pick(f.mode,lang))+pin+
+        h+='<tr role="row" data-st="'+st+'"><td role="cell" class="mode" data-l="'+E(C[0])+'">'+rich(pick(f.mode,lang))+pin+
           (f.planned?'<span class="fplan">'+pick(KL.fplan,lang)+'</span>':'')+'</td>'+
-          '<td data-l="'+E(C[1])+'">'+(String(d).trim()?softBreaks(rich(d)).split(/(<[^>]*>)/).map((t,i)=>i%2?t:t.replace(/[{,=]/g,'$&<wbr>')).join(''):'<span class="nosig">'+pick(KL.nosig,lang)+'</span>')+'</td>'+
-          '<td data-l="'+E(C[2])+'">'+rich(pick(f.impact,lang))+'</td>'+
-          '<td data-l="'+E(C[3])+'">'+rich(pick(f.action,lang))+'</td>'+
-          '<td class="ev" data-l="'+E(C[4])+'">'+refHTML(f,lang)+'</td>'+
-          '<td class="st" data-l="'+E(C[5])+'"><span class="ktag '+(FSTATE[st]||'')+'">'+pick(KL['fs-'+st],lang)+'</span></td></tr>';
+          '<td role="cell" data-l="'+E(C[1])+'">'+(String(d).trim()?softBreaks(rich(d)).split(/(<[^>]*>)/).map((t,i)=>i%2?t:t.replace(/[{,=]/g,'$&<wbr>')).join(''):'<span class="nosig">'+pick(KL.nosig,lang)+'</span>')+'</td>'+
+          '<td role="cell" data-l="'+E(C[2])+'">'+rich(pick(f.impact,lang))+'</td>'+
+          '<td role="cell" data-l="'+E(C[3])+'">'+rich(pick(f.action,lang))+'</td>'+
+          '<td role="cell" class="ev" data-l="'+E(C[4])+'">'+refHTML(f,lang)+'</td>'+
+          '<td role="cell" class="st" data-l="'+E(C[5])+'"><span class="ktag '+(FSTATE[st]||'')+'">'+pick(KL['fs-'+st],lang)+'</span></td></tr>';
       });
       h+='</tbody>';
     });

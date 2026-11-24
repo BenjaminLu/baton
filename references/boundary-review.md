@@ -123,12 +123,17 @@ walk the modes below and keep each one that can happen there:
 **Verify every `ref` line from source.** Re-locate the line at the pinned SHA
 (`git grep -n '<pattern>' <sha> -- <path>`) before linking; a permalink to the
 wrong lines is worse than none. A branch link (`/blob/main/…`) drifts the day
-it is written, so it fails `verify.py`.
+it is written, so it fails `verify.py`, and so does a ref whose host is not
+the one the browser opens (a port, a trailing dot, userinfo, a
+percent-escape, a backslash or a `..` segment). The page shows a GitHub ref
+as `owner/repo · file:La–Lb`: check the repository is the real one, not a
+fork.
 
 **How it composes with findings.** Pins stay the admission-tested items of §2;
 the failure table is the complete list under them. A mode that is
 `unhandled` **and introduced by this work** (`"introduced": true`) is also a
-finding: give it a pin and point the row at it with `"finding": <n>`.
+finding: give it a pin on the same boundary and point the row at it with
+`"finding": <n>`.
 `verify.py` fails an introduced, unhandled row without one. A mode that
 already existed stays a row and is never promoted to a pin — that would be the
 "no worse than today" candidate §2 drops.

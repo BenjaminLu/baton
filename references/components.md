@@ -99,9 +99,14 @@ Clicking a system or link on the map highlights its rows.
 
 - `state` is one of `handled` (needs `ref` or, on a proposal, `source`),
   `detected` (needs `detect`), `unhandled`. No default.
-- `ref` is `https://` only, opens in a new tab through the page's link
-  sanitizer (`rel="noopener noreferrer"`); a GitHub `blob` link must be pinned
-  to a commit SHA, never a branch.
+- `ref` is `https://` only and opens in a new tab through the page's link
+  sanitizer (`rel="noopener noreferrer"`). The host must be the one the
+  browser opens: plain ASCII, no port, trailing dot, userinfo or
+  percent-escape, and no backslash or `.` / `..` segment anywhere. A GitHub
+  `blob` / `blame` / `raw` link must be pinned to a commit SHA, never a
+  branch; the page labels it `owner/repo · file:La–Lb`, so a fork cannot pass
+  for the real repository.
+- `finding` names a pin on the **same** boundary (`at` equal to the row's).
 - Required on the `engineer` register (`verify.py` fails a boundary section
   without the key; on `eli5` it warns). `[]` is allowed and warns for each
   link that no row — on the link or on either end system — and no `ok`
