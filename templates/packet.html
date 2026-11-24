@@ -468,8 +468,8 @@ table.fmt tbody.fgroup.on tr.fgh th{box-shadow:inset 0 -2px 0 var(--accent);colo
 table.fmt tr[data-st] td:first-child{box-shadow:inset 3px 0 0 var(--rule-strong);padding-left:.75rem}
 table.fmt tr[data-st=handled] td:first-child{box-shadow:inset 3px 0 0 var(--ok-ink)}
 table.fmt tr[data-st=detected] td:first-child{box-shadow:inset 3px 0 0 var(--warn-ink)}
-table.fmt tr[data-st=unhandled] td:first-child{box-shadow:inset 3px 0 0 var(--risk-ink)}
-table.fmt{width:100%;min-width:46rem;border-collapse:separate;border-spacing:0;font-size:.88rem}
+table.fmt tr[data-st=unhandled] td:first-child{box-shadow:inset 5px 0 0 var(--risk-ink)}
+table.fmt{width:100%;min-width:44rem;border-collapse:separate;border-spacing:0;font-size:.88rem}
 table.fmt th{font-size:.74rem;font-weight:600;color:var(--muted);text-align:left;padding:.4rem .5rem;
   border-bottom:1px solid var(--rule-strong);vertical-align:bottom}
 table.fmt td{padding:.55rem .5rem;border-bottom:1px solid var(--rule);vertical-align:top;line-height:1.45;overflow-wrap:break-word}
@@ -875,7 +875,7 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
     fmode:W3('Failure mode','失效模式','失效模式'), fdetect:W3('Signal before a user notices','使用者發現前的訊號','用户发现前的信号'),
     fimpact:W3('What the user sees','使用者看到什麼','用户看到什么'), faction:W3('Runbook','處置（runbook）','处置（runbook）'),
     fref:W3('Evidence','證據','证据'), fstate:W3('State','狀態','状态'),
-    'fs-handled':W3('handled','已處理','已处理'), 'fs-detected':W3('detected','有偵測、未處理','已发现、未处理'),
+    'fs-handled':W3('handled','已處理','已处理'), 'fs-detected':W3('detected','有偵測、未處理','有检测、未处理'),
     'fs-unhandled':W3('unhandled','未處理','未处理'), 'fs-unknown':W3('state not given','未標示狀態','未标示状态'),
     nosig:W3('no signal today','目前沒有訊號','目前没有信号'), noref:W3('no code reference','沒有程式碼出處','没有代码出处'),
     refused:W3('link refused','連結被拒','链接被拒'), fplan:W3('not built yet','尚未實作','尚未实现'),
@@ -978,7 +978,7 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
     const fmName=k=>pick(KL.fmFor,lang)+String(k).split('>').map(x=>nm[x]!=null?nm[x]:x).join(' → ');
     let h='<div class="bmap">'+laneHTML(s.systems||[], {sub:s.sub||{}, hops:s.hops||{}, hot:[]}, 'map', lang,
       {badges:nb, linkBadges:lb, okLinks:true,
-       fm:k=>fmAt[k]?' data-at="'+E(k)+'" role="button" tabindex="0" aria-label="'+E(fmName(k))+'"':'',
+       fm:k=>fmAt[k]?' data-at="'+E(k)+'" role="button" tabindex="0" aria-label="'+E(fmName(k)+': '+fmAt[k]+' '+pick(fmAt[k]===1?KL.fmOne:KL.fmMany,lang))+'"':'',
        fmCount:k=>'<span class="fn-c">'+E(fmAt[k])+' '+pick(fmAt[k]===1?KL.fmOne:KL.fmMany,lang)+'</span>'})+'</div>';
     if(F.length){
       h+='<div class="bfind">'+F.map(f=>{
@@ -998,7 +998,8 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
   function safeRef(u){
     if(typeof u!=='string') return null;
     const h=safeHref(u);
-    return (h!=null && /^https:\/\//i.test(h) && !/["'<>`]/.test(h)) ? h : null;
+    // Userinfo or a backslash in the authority would make the shown host lie.
+    return (h!=null && /^https:\/\//i.test(h) && !/["'<>`]/.test(h) && !/^https:\/\/[^\/?#]*[@\\]/i.test(h)) ? h : null;
   }
   function refLabel(u){
     const g=/^https:\/\/(?:www\.)?github\.com(?::443)?\/[^\/]+\/[^\/]+\/(?:blob|blame|raw)\/[^\/]+\/([^#?]+)(?:\?[^#]*)?(?:#L(\d+)(?:C\d+)?(?:-L(\d+)(?:C\d+)?)?)?/i.exec(u);
@@ -1030,7 +1031,11 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
     // One table, one <tbody> per boundary: the columns line up down the whole list.
     h+=tscroll(KL.fmodes,lang)+'<table class="fmt"><thead><tr>'+C.map(c=>'<th scope="col">'+E(c)+'</th>').join('')+'</tr></thead>';
     keys.forEach(k=>{
-      const rows=FM.filter(f=>String(f.at==null?'':f.at)===k);
+      // Worst first inside a boundary: unhandled, then detected, then handled.
+      const RANK={unhandled:0,detected:1,handled:2};
+      const rank=f=>(typeof f.state==='string'&&f.state in RANK)?RANK[f.state]:-1;
+      const rows=FM.filter(f=>String(f.at==null?'':f.at)===k).map((f,i)=>[f,i])
+        .sort((a,b)=>rank(a[0])-rank(b[0])||a[1]-b[1]).map(x=>x[0]);
       const cnt=Object.create(null); rows.forEach(f=>{ const st=(typeof f.state==='string'&&FSTATE[f.state])?f.state:'unknown'; cnt[st]=(cnt[st]||0)+1; });
       h+='<tbody class="fgroup" data-fg="'+E(k)+'"><tr class="fgh"><th colspan="6" scope="rowgroup"><span class="fgn">'+
         softBreaks(rich(label(k)))+'</span><span class="fct">'+

@@ -355,7 +355,9 @@ def safe_ref(url):
     space, no raw quote / angle bracket / backtick (the page's safeRef())."""
     if not isinstance(url, str) or safe_href(url) is None or not re.match(r"(?ai)^https://", url):
         return None
-    return None if re.search(r"[\"'<>`]", url) else url
+    if re.search(r"[\"'<>`]", url) or re.match(r"(?ai)^https://[^/?#]*[@\\]", url):
+        return None             # userinfo or a backslash would make the shown host lie
+    return url
 
 
 def _js_str(v):
@@ -416,7 +418,8 @@ def check_failures(data, register="engineer"):
             problems.append(f"failure mode {i+1}: must be an object")
             continue
         label = f'failure mode {i+1} ("{_en(f.get("mode"))[:40]}")'
-        at = "" if f.get("at") is None else str(f.get("at"))
+        at = f.get("at")
+        at = _js_str(at) if isinstance(at, (str, int)) and not isinstance(at, bool) else ""
         if not (at in ids or at in drawn):
             problems.append(f'{label}: `at` "{at}" is not a system id or an "a>b" link drawn on the map '
                             "(each system to the next, in map order)")
@@ -449,7 +452,7 @@ def check_failures(data, register="engineer"):
         if st == "handled" and ref is None and not _text(f.get("source")).strip():
             problems.append(f"{label}: `handled` needs `ref` — the code line that handles it "
                             "(or, on a proposal, the `source` sentence)")
-        if st == "detected" and not _en(f.get("detect")).strip():
+        if st == "detected" and not _text(f.get("detect")).strip():
             problems.append(f"{label}: `detected` needs `detect` — the signal that notices it")
         if f.get("finding") is not None and not (hashable(f["finding"]) and f["finding"] in pins):
             problems.append(f"{label}: `finding` {f['finding']!r} is not a pin on the map")

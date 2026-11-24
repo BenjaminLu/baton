@@ -23,7 +23,8 @@ HOSTILE = ["javascript:alert(1)", "JaVaScRiPt:alert(1)", "data:text/html,<script
            "https://evil.example/a b", "https://evil.example/\n", "http://plain.example/a",
            "//evil.example/a", "mailto:a@b.c", 'https://a"onmouseover="' + on("ref") + '"',
            "https://a/'x", "https://a/<b>", "java\u0000script:x", "\u007fhttps://evil.example",
-           "http\u017f://evil.example/a"]
+           "http\u017f://evil.example/a", "https://github.com@evil.example/o/r/blob/abcdef1/x.py#L1",
+           "https://evil.example\\@github.com/x"]
 
 
 def chain(heading):
