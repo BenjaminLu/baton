@@ -42,14 +42,14 @@
 @media (prefers-color-scheme:dark){
   :root{--bg:#2d3142;--card:#393e53;--card-2:#333849;--fg:#f5f5f5;--muted:#bfc0c0;
     --soft:#8e98ac;--rule:rgba(245,245,245,.12);--rule-strong:rgba(191,192,192,.25);
-    --accent:#f08a59;--accent-tint:rgba(240,138,89,.10);--link:#6a95d8;
+    --accent:#f08a59;--accent-tint:rgba(240,138,89,.10);--link:#93b4ea;
     --amber:#d3ad7a;--seal:#b88670;--ok:#9caf8f;
     --warn-ink:#d3ad7a;--risk-ink:#f39b84;--ok-ink:#a9bd9c;--on-ink:#2d3142;
     --shadow:0 1px 2px rgba(0,0,0,.45),0 12px 32px rgba(0,0,0,.4)}
 }
 :root[data-theme=dark]{color-scheme:dark;--bg:#2d3142;--card:#393e53;--card-2:#333849;--fg:#f5f5f5;--muted:#bfc0c0;
     --soft:#8e98ac;--rule:rgba(245,245,245,.12);--rule-strong:rgba(191,192,192,.25);
-    --accent:#f08a59;--accent-tint:rgba(240,138,89,.10);--link:#6a95d8;
+    --accent:#f08a59;--accent-tint:rgba(240,138,89,.10);--link:#93b4ea;
     --amber:#d3ad7a;--seal:#b88670;--ok:#9caf8f;
     --warn-ink:#d3ad7a;--risk-ink:#f39b84;--ok-ink:#a9bd9c;--on-ink:#2d3142;
     --shadow:0 1px 2px rgba(0,0,0,.45),0 12px 32px rgba(0,0,0,.4)}
@@ -524,6 +524,14 @@ a.fref::after{content:"\00a0↗";font-family:var(--sans)}
 .fno.risk{border-color:var(--risk-ink);color:var(--risk-ink)} .fno.warn{border-color:var(--warn-ink);color:var(--warn-ink)}
 .fno.ok{border-color:var(--ok-ink);color:var(--ok-ink)}
 .bmap .fn-c .fno{margin:.1rem .08rem 0}
+/* A row's number is a link back to its place on the map. #steps a would
+   otherwise recolour it and underline it like prose links. */
+#steps a.fno{text-decoration:none;color:var(--fg);cursor:pointer}
+#steps a.fno.risk{color:var(--risk-ink)} #steps a.fno.warn{color:var(--warn-ink)} #steps a.fno.ok{color:var(--ok-ink)}
+#steps a.fno:hover{background:var(--accent-tint)}
+#steps a.fno:focus-visible{outline:2px solid var(--link);outline-offset:1px}
+/* The place a row's number led to: a ring for 1.6 s, so the eye finds it. */
+.bmap .fm.flash{outline:2px solid var(--accent);outline-offset:3px} .bmap .carrow.fm.flash{border-radius:6px}
 .ftoday{margin-top:.35rem;font-size:.8rem;color:var(--muted);line-height:1.45}
 .ftoday>span{font-family:var(--mono);font-size:.64rem;letter-spacing:.06em;text-transform:uppercase;margin-right:.4rem;font-weight:700}
 .bmap .fn-c{display:block;font-family:var(--mono);font-size:max(12px,.62rem);color:var(--muted);margin-top:.2rem;font-weight:400;
@@ -916,9 +924,9 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
     verified:W3('verified','已驗證','已验证'), unknown:W3('state not given','未標示狀態','未标示状态'), 'code-only':W3('code only','只有程式碼','只有代码'),
     absent:W3('absent','沒有證據','没有证据'),
     fmodes:W3('Failure modes — the runbook','失效模式與處置（runbook）','失效模式与处置（runbook）'),
-    fmcap:W3('Every way each boundary can fail: the signal that fires first, what the user sees, what on-call does. Select a system or link on the map to mark its rows.',
-             '每個邊界會怎麼壞：最先響的訊號、使用者看到什麼、on-call 要做什麼。點選地圖上的系統或連線，標出它的那幾列。',
-             '每个边界会怎么坏：最先响的信号、用户看到什么、on-call 要做什么。点击地图上的系统或连线，标出它的那几行。'),
+    fmcap:W3('Every way each boundary can fail: the signal that fires first, what the user sees, what on-call does. Select a system or link on the map to mark its rows; a row’s number leads back to its place on the map.',
+             '每個邊界會怎麼壞：最先響的訊號、使用者看到什麼、on-call 要做什麼。點選地圖上的系統或連線，標出它的那幾列；點一列的編號，就會回到它在地圖上的位置。',
+             '每个边界会怎么坏：最先响的信号、用户看到什么、on-call 要做什么。点击地图上的系统或连线，标出它的那几行；点一行的编号，就会回到它在地图上的位置。'),
     fmode:W3('Failure mode','失效模式','失效模式'), fdetect:W3('Signal before a user notices','使用者發現前的訊號','用户发现前的信号'),
     fimpact:W3('What the user sees','使用者看到什麼','用户看到什么'), faction:W3('Runbook','處置（runbook）','处置（runbook）'),
     fref:W3('Evidence','證據','证据'), fstate:W3('State','狀態','状态'),
@@ -930,10 +938,10 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
     q1:W3('“','「','“'), q2:W3('”','」','”'),
     fmFor:W3('Failure modes of ','失效模式：','失效模式：'),
     fmOne:W3('mode','種失效','种失效'), fmMany:W3('modes','種失效','种失效'),
-    ftoday:W3('Today','現在','现在'), fno:W3('row','列','行'),
-    rbcap:W3('Each row is numbered where it fails on the map above. Select a system or link to mark its rows.',
-             '每一列的編號標在上面地圖它出錯的位置。點選系統或連線，標出它的那幾列。',
-             '每一行的编号标在上面地图它出错的位置。点击系统或连线，标出它的那几行。')
+    ftoday:W3('Today','現在','现在'), fno:W3('row','列','行'), onmap:W3('show on the map','在地圖上看','在地图上看'),
+    rbcap:W3('Each row is numbered where it fails on the map above; the number leads back there. Select a system or link to mark its rows.',
+             '每一列的編號標在上面地圖它出錯的位置，點編號就回到那裡。點選系統或連線，標出它的那幾列。',
+             '每一行的编号标在上面地图它出错的位置，点编号就回到那里。点击系统或连线，标出它的那几行。')
   };
   const sub=(v,lang)=>{
     if(v==null) return '';
@@ -1039,9 +1047,21 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
       return '<b class="fno '+E(FSTATE[st]||'')+'">'+E(r.n)+'</b>'; };
     return '<div class="bmap">'+laneHTML(M.systems||[], {sub:M.sub||{}, hops:M.hops||{}, hot:[]}, 'map', lang,
       Object.assign({
-       fm:k=>plan.at[k]?' data-at="'+E(k)+'" role="button" tabindex="0" aria-label="'+E(fmName(k)+': '+
+       fm:k=>plan.at[k]?' data-at="'+E(k)+'"'+(plan.pid&&plan.pid[k]?' id="'+E(plan.pid[k])+'"':'')+' role="button" tabindex="0" aria-label="'+E(fmName(k)+': '+
           plan.at[k].map(r=>'#'+r.n).join(' '))+'"':'',
        fmCount:k=>'<span class="fn-c">'+plan.at[k].map(chip).join('')+'</span>'}, opts||{}))+'</div>';
+  }
+  // The element id of each system and link the map draws, so a row's number
+  // can lead back to the place where it fails.
+  function placeIds(s, M){
+    const sys=M.systems||[]; const out=Object.create(null); const si=secs.indexOf(s);
+    const id=k=>'fp-'+si+'-'+[...k].map(c=>c.codePointAt(0).toString(36)).join('-');
+    // A key seen twice (a repeated system id) gets no id: the link would
+    // only ever reach the first box.
+    const seen=Object.create(null);
+    const put=k=>{ if(k in seen){ delete out[k]; return; } seen[k]=1; out[k]=id(k); };
+    sys.forEach((n,i)=>{ put(String(n.id)); if(i<sys.length-1) put(n.id+'>'+sys[i+1].id); });
+    return out;
   }
   function boundaryHTML(s, lang){
     const M=mapOf(s);
@@ -1053,7 +1073,7 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
       else nb[f.at]=(nb[f.at]||'')+b;
     });
     const FM=Array.isArray(s.failures)?s.failures.filter(f=>f&&typeof f==='object'&&!Array.isArray(f)):[];
-    const plan=fmPlan(M.systems||[], FM);
+    const plan=fmPlan(M.systems||[], FM); plan.pid=placeIds(s, M);
     let h=mapHTML(M, FM, plan, lang, {badges:nb, linkBadges:lb, okLinks:true});
     if(F.length){
       h+='<div class="bfind">'+F.map(f=>{
@@ -1072,7 +1092,7 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
   function runbookHTML(s, lang){
     const M=mapOf(s);
     const FM=Array.isArray(s.rows)?s.rows.filter(f=>f&&typeof f==='object'&&!Array.isArray(f)):[];
-    const plan=fmPlan(M.systems||[], FM);
+    const plan=fmPlan(M.systems||[], FM); plan.pid=placeIds(s, M);
     return mapHTML(M, FM, plan, lang, {})+failuresHTML(M, s, plan, lang, {bare:true});
   }
   // The failure-mode table (boundary-review.md §3): every mode of every
@@ -1144,8 +1164,15 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
         const pin=f.finding!=null?'<span class="badge '+E(((s.findings||[]).find(x=>x&&x.n===f.finding)||{}).tone||'warn')+
           '" title="'+E(pick(KL.fpin,lang)+' '+f.finding)+'">'+E(f.finding)+'</span>':'';
         const d=pick(f.detect,lang);
-        h+='<tr role="row" data-st="'+st+'"><td role="cell" class="mode" data-l="'+E(C[0])+'"><b class="fno '+E(FSTATE[st]||'')+'" title="'+
-          E(pick(KL.fno,lang)+' '+r.n)+'">'+E(r.n)+'</b>'+rich(pick(f.mode,lang))+pin+
+        // The row's number leads back to its place on the map (a real link:
+        // Tab and Enter reach it, and the place takes focus without a mark).
+        const pid=plan.pid&&plan.pid[k];
+        const rn=lang==='en'?pick(KL.fno,lang)+' '+r.n:'第 '+r.n+' '+pick(KL.fno,lang);
+        const no=pid?'<a class="fno '+E(FSTATE[st]||'')+'" href="#'+E(pid)+'" data-place="'+E(pid)+'" title="'+
+            E(rn+' — '+pick(KL.onmap,lang))+'" aria-label="'+
+            E(rn+' — '+pick(KL.onmap,lang)+(lang==='en'?': ':'：')+label(k).replace(/\u00a0/g,' '))+'">'+E(r.n)+'</a>':
+          '<b class="fno '+E(FSTATE[st]||'')+'" title="'+E(rn)+'">'+E(r.n)+'</b>';
+        h+='<tr role="row" data-st="'+st+'"><td role="cell" class="mode" data-l="'+E(C[0])+'">'+no+rich(pick(f.mode,lang))+pin+
           (f.planned?'<span class="fplan">'+pick(KL.fplan,lang)+'</span>':'')+
           // What production does today rides under the mode, not in a seventh column.
           (f.today!=null?'<div class="ftoday"><span>'+pick(KL.ftoday,lang)+'</span>'+rich(pick(f.today,lang))+'</div>':'')+'</td>'+
@@ -1179,6 +1206,16 @@ footer.foot{margin-top:3.5rem;padding:1.1rem 0 2.5rem;border-top:1px solid var(-
       el.addEventListener('click',()=>pick1(el.dataset.at));
       el.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); pick1(el.dataset.at); } });
     });
+    // A row's number moves focus to its place on the map; Enter there marks
+    // the place's rows as a click does. The jump itself never sets a mark.
+    kb.querySelectorAll('a[data-place]').forEach(a=>a.addEventListener('click',e=>{
+      const t=document.getElementById(a.dataset.place); if(!t||!kb.contains(t)) return;
+      e.preventDefault();
+      const calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+      t.scrollIntoView({block:'center',behavior:calm?'auto':'smooth'});
+      t.focus({preventScroll:true});
+      t.classList.add('flash'); clearTimeout(t._fl); t._fl=setTimeout(()=>t.classList.remove('flash'),1600);
+    }));
   }
   function compareHTML(s, lang){
     const c=s.cols||[];
