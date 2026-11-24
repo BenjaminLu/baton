@@ -121,7 +121,9 @@ prose.
 ```
 
 The page draws the system map, numbers every row, and prints those numbers at
-the system or link where the row fails; selecting a place marks its rows.
+the system or link where the row fails; selecting a place marks its rows, and
+a row's number is a link back to its place on the map (focus moves there; Enter
+then marks it).
 Rows follow the boundary `failures` rules (`components.md` § boundary). A
 runbook, failure-mode or error-code table is **never** a `compare` or
 `matrix` — `verify.py` fails one by its heading or columns.

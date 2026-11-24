@@ -73,7 +73,7 @@ The systems come from the packet's one `systems` map (spec.md § systems) —
 the target state when the packet has an after architecture — so the boundary
 map, the runbooks and the architecture / sequence figures show the same boxes.
 Every failure row is numbered, and the number is printed on the map where the
-row fails.
+row fails; in the table, the number links back to that place.
 
 **One row per failure mode, one place.** When the packet has `runbook`
 sections, every failure row lives in a runbook and the boundary map keeps only
